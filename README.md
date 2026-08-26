@@ -34,11 +34,14 @@
 帮我画一张雨夜霓虹街头的赛博朋克猫咪。
 ```
 
-<p align="center">Agent 会自动调用 <code>generate_image</code>，生成图片并直接显示在当前对话中。</p>
+<p align="center">Agent 会自动完成图片生成，也可以直接基于上一张图片继续修改。</p>
 
 <br />
 
-<img src="docs/assets/chat-preview.png" alt="对话生图效果预览" width="820" />
+<div align="center">
+  <img src="docs/assets/generate-example.png" alt="首次生成图片的对话截图" width="48%" style="vertical-align: top;" />
+  <img src="docs/assets/edit-example.png" alt="基于上一张图片继续编辑的对话截图" width="48%" style="vertical-align: top;" />
+</div>
 
 </div>
 

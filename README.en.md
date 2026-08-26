@@ -33,11 +33,14 @@ Install the image generation plugin by running: pnpm dsh plugin --profile web ad
 Draw a cyberpunk cat on a neon street in a rainy night.
 ```
 
-<p align="center">The Agent will automatically call <code>generate_image</code> and display the image directly in the conversation.</p>
+<p align="center">The Agent will automatically generate images and can also continue editing the previous image directly.</p>
 
 <br />
 
-<img src="docs/assets/chat-preview.png" alt="Chat preview" width="820" />
+<div align="center">
+  <img src="docs/assets/generate-example.png" alt="Initial image generation conversation" width="48%" style="vertical-align: top;" />
+  <img src="docs/assets/edit-example.png" alt="Continued image editing conversation" width="48%" style="vertical-align: top;" />
+</div>
 
 </div>
 
