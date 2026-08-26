@@ -139,12 +139,20 @@ function imageOutput(verb: 'Generated' | 'Edited') {
       ]
     },
     presentationMeta: (args: unknown, value: GeneratedValue) => ({
-      kind: 'dsh-image-gen', attachment: value.attachment, provider: value.provider, model: value.model, output: value.output,
+      kind: 'dsh-image-gen', attachment: attachmentMeta(value.attachment), provider: value.provider, model: value.model, output: value.output,
       ...(verb === 'Edited' ? { operation: 'edit' } : {}),
       ...(typeof value.savedTo === 'string' ? { savedTo: value.savedTo } : {}),
       prompt: (args as { prompt: string }).prompt,
     }),
   } as const
+}
+
+function attachmentMeta(ref: ImageAttachmentRef) {
+  return {
+    attachmentId: String(ref.attachmentId), mediaType: ref.mediaType, bytes: ref.bytes, width: ref.width, height: ref.height,
+    ...(ref.name === undefined ? {} : { name: ref.name }),
+    ...(ref.originalDimensions === undefined ? {} : { originalDimensions: { width: ref.originalDimensions.width, height: ref.originalDimensions.height } }),
+  }
 }
 
 async function saveGenerated(
