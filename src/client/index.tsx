@@ -261,6 +261,11 @@ export function apply(ctx: Context): void {
     key: 'generate_image',
     inject: (): ImageCardFace => ({ locale }),
   }, GeneratedImageCard))
+  ctx.slots.inject('tool.call.toolview', () => register({
+    name: 'tool.call.toolview',
+    key: 'edit_image',
+    inject: (): ImageCardFace => ({ locale }),
+  }, GeneratedImageCard))
 
   // 3. Native conversation view tab (DSH official slot: 'conversation.view')
   ;(ctx.slots.inject as any)('conversation.view', () => register({
