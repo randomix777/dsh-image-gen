@@ -66,7 +66,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       render: (_args, value) => {
         const saved = typeof value.savedTo === 'string' ? ` It was also saved to the workspace as ${value.savedTo}.` : typeof value.saveError === 'string' ? ` Saving it to the workspace failed: ${value.saveError}.` : ' It has no local file path.'
         return [
-          { type: 'text' as const, text: `Generated one image with ${value.provider}/${value.model} (${value.output}). It is already attached to the conversation.${saved} Respond to the user without reading or searching for the image.` },
+          { type: 'text' as const, text: `Generated one image with ${value.provider}/${value.model} (${value.output}). Attachment ID: ${String(value.attachment.attachmentId)}. It is already attached to the conversation.${saved} Respond to the user without reading or searching for the image.` },
           { type: 'image' as const, attachment: value.attachment as ImageAttachmentRef },
         ]
       },
@@ -125,7 +125,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       render: (_args, value) => {
         const saved = typeof value.savedTo === 'string' ? ` It was also saved to the workspace as ${value.savedTo}.` : typeof value.saveError === 'string' ? ` Saving it to the workspace failed: ${value.saveError}.` : ' It has no local file path.'
         return [
-          { type: 'text' as const, text: `Edited one image with ${value.provider}/${value.model} (${value.output}). The edited image is attached to the conversation.${saved} Respond to the user without reading or searching for the image.` },
+          { type: 'text' as const, text: `Edited one image with ${value.provider}/${value.model} (${value.output}). Attachment ID: ${String(value.attachment.attachmentId)}. The edited image is attached to the conversation.${saved} Respond to the user without reading or searching for the image.` },
           { type: 'image' as const, attachment: value.attachment as ImageAttachmentRef },
         ]
       },
