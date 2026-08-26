@@ -19,7 +19,7 @@ export const DEFAULT_DASHSCOPE_ENDPOINT = 'https://dashscope.aliyuncs.com/api/v1
 export const DEFAULT_GOOGLE_MODEL = 'gemini-3.1-flash-image'
 export const DEFAULT_OPENAI_MODEL = 'gpt-image-2'
 export const DEFAULT_SEEDREAM_MODEL = 'doubao-seedream-5-0-260128'
-export const DEFAULT_DASHSCOPE_MODEL = 'wanx2.1-t2i-turbo'
+export const DEFAULT_DASHSCOPE_MODEL = 'qwen-image-3.0'
 
 export const DEFAULT_MODELS: Record<ImageProvider, string> = {
   google: DEFAULT_GOOGLE_MODEL,
@@ -34,4 +34,3 @@ export const DEFAULT_BASE_URLS: Record<ImageProvider, string> = {
   seedream: DEFAULT_SEEDREAM_BASE_URL,
   dashscope: DEFAULT_DASHSCOPE_ENDPOINT,
 }
-
