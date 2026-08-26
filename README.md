@@ -12,6 +12,7 @@
 [![DSH Plugin](https://img.shields.io/badge/Plugin%20For-DeepSeek%20Harness-6366f1?style=flat-square)](https://github.com/deepseek-ai)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-image-gen.svg?style=flat-square&color=emerald)](https://www.npmjs.com/package/dsh-image-gen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![LINUX DO](https://img.shields.io/badge/LINUX%20DO-社区友链-555?style=flat-square)](https://linux.do/)
 
 [English](README.en.md) | **简体中文**
 
