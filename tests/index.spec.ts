@@ -48,14 +48,11 @@ function toolByName(tools: ToolDefinition[], name: string): ToolDefinition {
 }
 
 describe('image tool registration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  beforeEach(() => { vi.clearAllMocks() })
 
   it('registers generate_image and edit_image', () => {
     const { ctx, tools } = harnessContext()
     apply(ctx, { provider: 'google', saveToWorkspace: false })
-
     expect(tools.map(tool => tool.name)).toEqual(['generate_image', 'edit_image'])
   })
 
@@ -63,12 +60,7 @@ describe('image tool registration', () => {
     const { ctx, tools } = harnessContext()
     apply(ctx, { provider: 'google', saveToWorkspace: false })
     const ref = attachment('sha256:full-attachment-id')
-    const value = {
-      attachment: ref,
-      provider: 'google',
-      model: 'gemini-3.1-flash-image',
-      output: '1:1, 1K',
-    }
+    const value = { attachment: ref, provider: 'google', model: 'gemini-3.1-flash-image', output: '1:1, 1K' }
 
     for (const name of ['generate_image', 'edit_image']) {
       const tool = toolByName(tools, name)
@@ -80,14 +72,13 @@ describe('image tool registration', () => {
     }
   })
 
-  it('rejects editing for providers that do not support it yet', async () => {
+  it('exposes provider-neutral size control on edit_image', () => {
     const { ctx, tools } = harnessContext()
     apply(ctx, { provider: 'openai', saveToWorkspace: false })
     const edit = toolByName(tools, 'edit_image')
-
-    await expect(edit.execute({ prompt: 'edit this image' }, {
-      callId: 'call-test',
-      signal: new AbortController().signal,
-    } as never)).rejects.toThrow('Image editing is not yet supported for provider openai.')
+    const parameters = edit.parameters as { properties?: Record<string, unknown> }
+    expect(parameters.properties).toHaveProperty('size')
+    expect(parameters.properties).toHaveProperty('aspect_ratio')
+    expect(parameters.properties).toHaveProperty('image_size')
   })
 })
