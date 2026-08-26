@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { generateGoogleImage } from '../src/google.js'
+import { editGoogleImage, generateGoogleImage } from '../src/google.js'
 
 const signal = new AbortController().signal
 const endpoint = 'https://generativelanguage.googleapis.com/v1beta/interactions'
@@ -25,6 +25,32 @@ describe('generateGoogleImage', () => {
       model: 'gemini-3.1-flash-image',
       input: 'a bright cat',
       response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: '16:9', image_size: '2K' },
+    })
+  })
+  it('sends resolved reference bytes for image editing', async () => {
+    const fetchMock = vi.fn(async () => response({ output_image: { data: image, mime_type: 'image/jpeg' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(editGoogleImage({
+      apiKey: 'gemini-key',
+      endpoint,
+      model: 'gemini-3.1-flash-image',
+      prompt: 'add black sunglasses',
+      sourceImage: { data: new Uint8Array(Buffer.from('source image')), mediaType: 'image/png' },
+      aspectRatio: '1:1',
+      imageSize: '1K',
+      maxBytes: 1024,
+      signal,
+    })).resolves.toMatchObject({ mediaType: 'image/jpeg' })
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(JSON.parse(init.body as string)).toEqual({
+      model: 'gemini-3.1-flash-image',
+      input: [
+        { type: 'text', text: 'add black sunglasses' },
+        { type: 'image', mime_type: 'image/png', data: Buffer.from('source image').toString('base64') },
+      ],
+      response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: '1:1', image_size: '1K' },
     })
   })
 

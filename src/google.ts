@@ -11,17 +11,50 @@ export interface GeneratedImage {
   mediaType: ImageMediaType
 }
 
-/** Send one native Google image request and validate its inline image response. */
-export async function generateGoogleImage(input: {
+interface GoogleRequestBase {
   apiKey: string
   endpoint: string
   model: string
-  prompt: string
   aspectRatio: AspectRatio
   imageSize: ImageSize
   maxBytes: number
   signal: AbortSignal
+}
+
+/** Send one native Google text-to-image request. */
+export function generateGoogleImage(input: GoogleRequestBase & { prompt: string }): Promise<GeneratedImage> {
+  return requestGoogleImage({
+    ...input,
+    operation: 'generation',
+    interactionInput: input.prompt,
+  })
+}
+
+/** Send one native Google image-editing request using already-resolved bytes. */
+export function editGoogleImage(input: GoogleRequestBase & {
+  prompt: string
+  sourceImage: { data: Uint8Array; mediaType: ImageMediaType }
 }): Promise<GeneratedImage> {
+  return requestGoogleImage({
+    ...input,
+    operation: 'editing',
+    interactionInput: [
+      { type: 'text', text: input.prompt },
+      {
+        type: 'image',
+        mime_type: input.sourceImage.mediaType,
+        data: Buffer.from(input.sourceImage.data).toString('base64'),
+      },
+    ],
+  })
+}
+
+/** Shared Google request, response parsing, decoding, and size enforcement. */
+async function requestGoogleImage(input: GoogleRequestBase & {
+  operation: 'generation' | 'editing'
+  interactionInput: string | Array<Record<string, string>>
+}): Promise<GeneratedImage> {
+  const label = `Google image ${input.operation}`
   const response = await fetch(input.endpoint, {
     method: 'POST',
     redirect: 'error',
@@ -29,7 +62,7 @@ export async function generateGoogleImage(input: {
     headers: { 'content-type': 'application/json', 'x-goog-api-key': input.apiKey },
     body: JSON.stringify({
       model: input.model,
-      input: input.prompt,
+      input: input.interactionInput,
       response_format: {
         type: 'image',
         mime_type: REQUESTED_MEDIA_TYPE,
@@ -38,20 +71,20 @@ export async function generateGoogleImage(input: {
       },
     }),
   })
-  const text = await readBoundedText(response, Math.ceil(input.maxBytes * 1.4) + ERROR_LIMIT)
-  if (!response.ok) throw new Error(`Google image generation failed (${response.status}): ${text.slice(0, ERROR_LIMIT)}`)
+  const text = await readBoundedText(response, Math.ceil(input.maxBytes * 1.4) + ERROR_LIMIT, label)
+  if (!response.ok) throw new Error(`${label} failed (${response.status}): ${text.slice(0, ERROR_LIMIT)}`)
   let payload: unknown
   try {
     payload = JSON.parse(text)
   } catch {
-    throw new Error('Google image generation returned invalid JSON')
+    throw new Error(`${label} returned invalid JSON`)
   }
   const image = outputImage(payload)
-  if (image === undefined) throw new Error(`Google image generation returned no image: ${text.slice(0, ERROR_LIMIT)}`)
+  if (image === undefined) throw new Error(`${label} returned no image: ${text.slice(0, ERROR_LIMIT)}`)
   const mediaType = mediaTypeOf(image.mime_type ?? REQUESTED_MEDIA_TYPE)
-  if (mediaType === undefined) throw new Error(`Google image generation returned unsupported media type ${JSON.stringify(image.mime_type)}`)
-  const data = decodeBase64(image.data)
-  if (data.byteLength > input.maxBytes) throw new Error(`Google image generation exceeded the ${String(input.maxBytes)} byte image limit`)
+  if (mediaType === undefined) throw new Error(`${label} returned unsupported media type ${JSON.stringify(image.mime_type)}`)
+  const data = decodeBase64(image.data, label)
+  if (data.byteLength > input.maxBytes) throw new Error(`${label} exceeded the ${String(input.maxBytes)} byte image limit`)
   return { data, mediaType }
 }
 
@@ -86,15 +119,15 @@ function mediaTypeOf(value: unknown): ImageMediaType | undefined {
   return value === 'image/png' || value === 'image/jpeg' || value === 'image/webp' || value === 'image/gif' ? value : undefined
 }
 
-function decodeBase64(data: string): Uint8Array {
+function decodeBase64(data: string, label: string): Uint8Array {
   const clean = data.replace(/\s+/g, '')
-  if (clean.length === 0) throw new Error('Google image generation returned invalid base64 image data')
+  if (clean.length === 0) throw new Error(`${label} returned invalid base64 image data`)
   const decoded = Buffer.from(clean, 'base64')
-  if (decoded.length === 0) throw new Error('Google image generation returned invalid base64 image data')
+  if (decoded.length === 0) throw new Error(`${label} returned invalid base64 image data`)
   return new Uint8Array(decoded)
 }
 
-async function readBoundedText(response: Response, maxBytes: number): Promise<string> {
+async function readBoundedText(response: Response, maxBytes: number, label: string): Promise<string> {
   if (response.body === null) return ''
   const reader = response.body.getReader()
   const chunks: Uint8Array[] = []
@@ -104,7 +137,7 @@ async function readBoundedText(response: Response, maxBytes: number): Promise<st
       const next = await reader.read()
       if (next.done) break
       bytes += next.value.byteLength
-      if (bytes > maxBytes) throw new Error(`Google image generation response exceeded the ${String(maxBytes)} byte limit`)
+      if (bytes > maxBytes) throw new Error(`${label} response exceeded the ${String(maxBytes)} byte limit`)
       chunks.push(next.value)
     }
   } finally {

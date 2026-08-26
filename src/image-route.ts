@@ -1,6 +1,7 @@
 /** Same-origin HTTP bridge from the Web result card to the Attachment service. */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { ImageAttachmentRef, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
+import { parseImageAttachmentRef } from './reference-image.js'
 import { IMAGE_ROUTE } from './shared.js'
 
 export { IMAGE_ROUTE } from './shared.js'
@@ -46,24 +47,13 @@ export async function serveImage(req: IncomingMessage, res: ServerResponse, deps
 export function imageAttachmentFromMeta(meta: unknown): ImageAttachmentRef | undefined {
   const value = record(meta)
   if (value?.kind !== 'dsh-image-gen') return undefined
-  return imageAttachment(value.attachment)
+  return parseImageAttachmentRef(value.attachment)
 }
 
 function attachmentFromRequest(value: unknown): ImageAttachmentRef | undefined {
-  return imageAttachment(record(value)?.attachment)
+  return parseImageAttachmentRef(record(value)?.attachment)
 }
 
-function imageAttachment(value: unknown): ImageAttachmentRef | undefined {
-  const ref = record(value)
-  if (ref === undefined) return undefined
-  if (typeof ref.attachmentId !== 'string' || !mediaType(ref.mediaType) || typeof ref.bytes !== 'number' || typeof ref.width !== 'number' || typeof ref.height !== 'number') return undefined
-  if (ref.name !== undefined && typeof ref.name !== 'string') return undefined
-  return ref as unknown as ImageAttachmentRef
-}
-
-function mediaType(value: unknown): value is ImageAttachmentRef['mediaType'] {
-  return value === 'image/png' || value === 'image/jpeg' || value === 'image/webp' || value === 'image/gif'
-}
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined
