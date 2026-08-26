@@ -15,17 +15,8 @@ export interface DashScopeEditOptions extends DashScopeImageOptions {
   sourceImage: { data: Uint8Array; mediaType: ImageMediaType }
 }
 
-interface DashScopeOutputResult {
-  url?: string
-}
-
-interface DashScopeChoiceMessageContent {
-  text?: string
-  image?: string
-  image_url?: string
-  url?: string
-}
-
+interface DashScopeOutputResult { url?: string }
+interface DashScopeChoiceMessageContent { text?: string; image?: string; image_url?: string; url?: string }
 interface DashScopeTaskResponse {
   output?: {
     task_id?: string
@@ -38,7 +29,8 @@ interface DashScopeTaskResponse {
   code?: string
 }
 
-/** Call DashScope image synthesis/generation API and handle both synchronous output & async task polling. */
+type DashScopeOperation = 'generation' | 'editing'
+
 export async function generateDashScopeImage(options: DashScopeImageOptions): Promise<{
   data: Uint8Array
   mediaType: ImageAttachmentRef['mediaType']
@@ -46,17 +38,13 @@ export async function generateDashScopeImage(options: DashScopeImageOptions): Pr
   const base = options.endpoint.replace(/\/+$/, '')
   const formattedSize = (options.size ?? '1024*1024').replace('x', '*')
   const isQwenImage = qwenImageModel(options.model)
-
   const submitUrl = isQwenImage
     ? `${base}/services/aigc/multimodal-generation/generation`
     : `${base}/services/aigc/text2image/image-synthesis`
-
   const requestBody = isQwenImage
     ? {
         model: options.model,
-        input: {
-          messages: [{ role: 'user', content: [{ text: options.prompt }] }],
-        },
+        input: { messages: [{ role: 'user', content: [{ text: options.prompt }] }] },
         parameters: { size: formattedSize },
       }
     : {
@@ -64,11 +52,9 @@ export async function generateDashScopeImage(options: DashScopeImageOptions): Pr
         input: { prompt: options.prompt },
         parameters: { size: formattedSize, n: 1 },
       }
-
-  return submitAndResolve(submitUrl, requestBody, options)
+  return submitAndResolve(submitUrl, requestBody, options, 'generation')
 }
 
-/** Edit an image with DashScope Qwen Image multimodal generation. */
 export async function editDashScopeImage(options: DashScopeEditOptions): Promise<{
   data: Uint8Array
   mediaType: ImageAttachmentRef['mediaType']
@@ -95,7 +81,7 @@ export async function editDashScopeImage(options: DashScopeEditOptions): Promise
       ...(formattedSize === undefined || formattedSize.length === 0 ? {} : { size: formattedSize }),
     },
   }
-  return submitAndResolve(submitUrl, requestBody, options)
+  return submitAndResolve(submitUrl, requestBody, options, 'editing')
 }
 
 function qwenImageModel(model: string): boolean {
@@ -110,8 +96,10 @@ async function submitAndResolve(
   submitUrl: string,
   requestBody: unknown,
   options: DashScopeImageOptions,
+  operation: DashScopeOperation,
 ): Promise<{ data: Uint8Array; mediaType: ImageAttachmentRef['mediaType'] }> {
   const base = options.endpoint.replace(/\/+$/, '')
+  const label = operation === 'generation' ? 'generation' : 'editing'
   const submitResponse = await fetch(submitUrl, {
     method: 'POST',
     ...(options.signal ? { signal: options.signal } : {}),
@@ -122,10 +110,9 @@ async function submitAndResolve(
     },
     body: JSON.stringify(requestBody),
   })
-
   if (!submitResponse.ok) {
     const errorText = await submitResponse.text()
-    throw new Error(`DashScope image request failed (${String(submitResponse.status)}): ${errorText}`)
+    throw new Error(`DashScope image ${label} failed (${String(submitResponse.status)}): ${errorText}`)
   }
 
   const submitResult = (await submitResponse.json()) as DashScopeTaskResponse
@@ -140,22 +127,18 @@ async function submitAndResolve(
   const taskQueryUrl = `${base}/tasks/${taskId}`
   const startTime = Date.now()
   const timeoutMs = 60_000
-
   while (Date.now() - startTime < timeoutMs) {
     if (options.signal?.aborted) throw new Error('DashScope image task polling aborted')
     await waitForPoll(options.signal)
-
     const taskResponse = await fetch(taskQueryUrl, {
       method: 'GET',
       ...(options.signal ? { signal: options.signal } : {}),
       headers: { authorization: `Bearer ${options.apiKey}` },
     })
-
     if (!taskResponse.ok) {
       const errorText = await taskResponse.text()
       throw new Error(`DashScope task query failed (${String(taskResponse.status)}): ${errorText}`)
     }
-
     const taskResult = (await taskResponse.json()) as DashScopeTaskResponse
     const status = taskResult.output?.task_status
     if (status === 'SUCCEEDED') {
@@ -164,11 +147,10 @@ async function submitAndResolve(
       return downloadImageBlob(imageUrl, options)
     }
     if (status === 'FAILED') {
-      throw new Error(`DashScope image request failed: ${taskResult.output?.message ?? taskResult.message ?? 'Unknown error'}`)
+      throw new Error(`DashScope image ${label} failed: ${taskResult.output?.message ?? taskResult.message ?? 'Unknown error'}`)
     }
   }
-
-  throw new Error(`DashScope image request timed out after ${String(timeoutMs / 1000)} seconds`)
+  throw new Error(`DashScope image ${label} timed out after ${String(timeoutMs / 1000)} seconds`)
 }
 
 function waitForPoll(signal?: AbortSignal): Promise<void> {
