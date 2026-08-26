@@ -6,7 +6,7 @@
 
 # 🎨 dsh-image-gen
 
-**Bring ChatGPT-like image generation to DeepSeek Harness — supporting in-chat generation, gallery overview, fullscreen preview, quick copy, and one-click download.**
+**Bring ChatGPT-like conversational image generation and image editing to DeepSeek Harness, with support for text-to-image, image-to-image, continuous editing, and multiple image providers.**
 
 [![npm version](https://img.shields.io/npm/v/dsh-image-gen.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/dsh-image-gen)
 [![DSH Plugin](https://img.shields.io/badge/Plugin%20For-DeepSeek%20Harness-6366f1?style=flat-square)](https://github.com/deepseek-ai)
@@ -48,14 +48,14 @@ Draw a cyberpunk cat on a neon street in a rainy night.
 
 ## 💡 What Problem Does It Solve?
 
-**`dsh-image-gen` is an open-source image generation plugin built specifically for DeepSeek Harness (DSH).**
+**`dsh-image-gen` is an open-source image generation and editing plugin built specifically for DeepSeek Harness (DSH).**
 
 DeepSeek Harness empowers agents to use tools for various tasks. This project adds native **multimodal image generation capabilities**:
 
 ```mermaid
 graph LR
     A[User Prompt] --> B[DeepSeek Harness Agent]
-    B --> C[generate_image Tool]
+    B --> C[generate_image / edit_image]
     C --> D[Gemini / OpenAI / Seedream / DashScope]
     D --> E[Image Data]
     E --> F[In-chat Conversation Stream]
