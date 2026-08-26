@@ -106,19 +106,18 @@ pnpm dsh plugin --profile web add ./dsh-image-gen
 现在直接在聊天框输入：
 
 ```text
-A photo of young children playing
+生成一张极简主义的现代建筑客厅插画。
 ```
 
-Agent 会自动调用 `generate_image` 并返回图片；想继续调整时，也可以直接基于上一张图继续修改：
+当前 Agent 就会自动调用 `generate_image` 工具并在对话流中返回图片。
+
+也可以继续基于上一张图进行编辑：
 
 ```text
-All kids wearing sunglasses, no other changes
+给刚才那张图加上落地窗，并把窗外改成雪山。
 ```
 
-<div align="center">
-  <img src="docs/assets/generate-example.webp" alt="对话生图示例" width="48%" />
-  <img src="docs/assets/edit-example.webp" alt="图片编辑示例" width="48%" />
-</div>
+Agent 会调用 `edit_image`，复用当前会话中的图片继续修改。
 
 ### 4. 查看原生生图画廊
 
