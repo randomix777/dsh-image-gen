@@ -32,6 +32,6 @@ describe('editDashScopeImage', () => {
     await expect(editDashScopeImage({
       apiKey: 'dash-key', endpoint, model: 'wanx2.1-t2i-turbo', prompt: 'edit',
       sourceImage: { data: new Uint8Array([1]), mediaType: 'image/png' }, maxBytes: 1024, signal,
-    })).rejects.toThrow('requires a qwen-image model')
+    })).rejects.toThrow('Configure a qwen-image model.')
   })
 })
