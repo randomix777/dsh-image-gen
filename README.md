@@ -134,18 +134,12 @@ Agent 会调用 `edit_image`，复用当前会话中的图片继续修改。
 
 ## ✨ 主要能力
 
-- 💬 **对话中直接生图**：不需要切换到其他网站，也不需要手动复制 Prompt，直接告诉 Agent 你想画什么即可。
-- 🖼️ **支持文生图**：直接通过自然语言生成图片。
-- ✏️ **支持图生图 / 图片编辑**：可以基于已有图片继续修改内容、风格或背景。
-- 🔁 **支持连续多轮编辑**：上一张生成或编辑后的图片，可以在后续对话中继续修改。
-- 📎 **复用会话图片**：支持使用当前会话中的上传图片或历史生成图片作为参考图。
-- 🖼️ **历史生图画廊**：顶栏自带「画廊」Tab，自动汇总所有历史生成的图片，支持关键词搜索、厂商筛选、单张删除（带防误触确认与持久化墓碑）与一键复制/下载。
-- 🔍 **交互式图片工具**：支持点击全屏大图预览、一键复制图片到剪贴板、本地下载与新标签页打开。
-- 🎨 **多 Provider 支持**：支持 Google Gemini、OpenAI Images、OpenAI Compatible API、ByteDance Seedream / 火山方舟以及阿里云 DashScope（Qwen Image）。Provider、模型和 Endpoint 均可在设置中自由定制。
-- 🔑 **BYOK (自带 Key)**：插件使用你自己的 API Key。API Key 通过 DeepSeek Harness 的 `credentials` 服务管理，采用写保护隔离，不需要写进项目源码或配置文件，前端不存明文。
-- 🖼️ **图片跟随会话保存**：生成结果会接入 DeepSeek Harness 的 Attachment / Conversation 体系，重新打开历史会话后，仍然可以看到之前生成的图片。
-- 💾 **生成图片自动落盘到工作区**：默认在每次生成后把图片文件保存到当前会话工作区，工具结果会返回文件的绝对路径；可在设置中关闭或修改保存目录。
-- ⚙️ **原生设置界面**：Provider、API Key、模型和 Endpoint 都可以直接在 DSH Web 设置中修改，不需要手动编辑配置文件。
+- 💬 **原生对话生图与编辑**：直接在 DeepSeek Harness 对话中生成图片，也可以基于已有图片继续修改。
+- 🔁 **连续多轮编辑**：支持复用当前会话中的上传图片、历史生成图和上一轮编辑结果继续迭代。
+- 🖼️ **画廊与图片工具**：自动汇总历史图片，支持搜索、筛选、全屏预览、复制、下载与删除。
+- 🎨 **多 Provider 支持**：兼容 Google Gemini、OpenAI Images / Compatible、Seedream、DashScope Qwen Image。
+- 🔑 **BYOK + 原生设置**：API Key、Provider、模型和 Endpoint 都可以直接在 DSH 设置中配置。
+- 💾 **会话与工作区保存**：图片接入 DSH Attachment / Conversation，并可自动保存到当前工作区。
 
 ---
 
