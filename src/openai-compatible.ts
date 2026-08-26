@@ -3,19 +3,16 @@ import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
 
 const ERROR_LIMIT = 4096
 
-/** One generated raster normalized before Attachment persistence. */
 export interface GeneratedCompatibleImage {
   data: Uint8Array
   mediaType: ImageMediaType
 }
 
-/** Provider-neutral source image for edit requests. */
 export interface CompatibleReferenceImage {
   data: Uint8Array
   mediaType: ImageMediaType
 }
 
-/** Generate an image from an OpenAI-compatible endpoint. */
 export async function generateOpenAICompatibleImage(input: {
   provider: 'openai' | 'seedream'
   apiKey: string
@@ -34,7 +31,6 @@ export async function generateOpenAICompatibleImage(input: {
   return parseImageResponse(response, input.provider, input)
 }
 
-/** Edit one image through the standard OpenAI Images `/images/edits` contract. */
 export async function editOpenAICompatibleImage(input: {
   apiKey: string
   baseURL: string
@@ -46,7 +42,8 @@ export async function editOpenAICompatibleImage(input: {
   signal: AbortSignal
 }): Promise<GeneratedCompatibleImage> {
   const form = new FormData()
-  form.append('image', new Blob([input.sourceImage.data], { type: input.sourceImage.mediaType }), `reference.${extensionOf(input.sourceImage.mediaType)}`)
+  const uploadBytes = new Uint8Array(input.sourceImage.data)
+  form.append('image', new Blob([uploadBytes], { type: input.sourceImage.mediaType }), `reference.${extensionOf(input.sourceImage.mediaType)}`)
   form.append('prompt', input.prompt)
   form.append('model', input.model)
   if (input.size !== undefined && input.size.length > 0) form.append('size', input.size)
