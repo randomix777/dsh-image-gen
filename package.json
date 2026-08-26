@@ -1,6 +1,6 @@
 {
   "name": "dsh-image-gen",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Bring ChatGPT-like image generation to DeepSeek Harness — Gemini, OpenAI, Seedream, DashScope & more.",
   "type": "module",
   "author": "shanliuling",
@@ -87,8 +87,8 @@
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0 <5",
-    "@deepseek-ai/dsh-attachment": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-api-remotes": ">=0.1.1-rc.2 <0.2.0",
+    "@deepseek-ai/dsh-attachment": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-connection": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-runtime": ">=0.1.1-rc.2 <0.2.0",
     "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.1-rc.2 <0.2.0",
@@ -105,8 +105,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
-    "@deepseek-ai/dsh-attachment": "0.1.1-rc.2",
     "@deepseek-ai/dsh-api-remotes": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-connection": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.2",
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.1-rc.2",
