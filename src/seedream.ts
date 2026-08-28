@@ -1,5 +1,6 @@
 /** Volcengine Ark Seedream image-editing adapter. */
 import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import { fetchWithRetry } from './http.js'
 import type { GeneratedCompatibleImage } from './openai-compatible.js'
 
 const ERROR_LIMIT = 4096
@@ -14,9 +15,10 @@ export async function editSeedreamImage(input: {
   size?: string
   maxBytes: number
   signal: AbortSignal
+  count?: number
 }): Promise<GeneratedCompatibleImage> {
-  const response = await fetch(imageEndpoint(input.baseURL), {
-    method: 'POST', redirect: 'error', signal: input.signal,
+  const response = await fetchWithRetry(imageEndpoint(input.baseURL), {
+    method: 'POST', redirect: 'error',
     headers: { authorization: `Bearer ${input.apiKey}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       model: input.model,
@@ -24,8 +26,9 @@ export async function editSeedreamImage(input: {
       image: input.sourceImages.map(toDataUrl),
       ...(input.size === undefined || input.size.length === 0 ? {} : { size: input.size }),
       response_format: 'b64_json',
+      ...(input.count !== undefined && input.count > 1 ? { n: input.count } : {}),
     }),
-  })
+  }, { signal: input.signal })
 
   const text = await readBoundedText(response, Math.ceil(input.maxBytes * 1.4) + ERROR_LIMIT)
   if (!response.ok) throw new Error(`seedream image editing failed (${response.status}): ${text.slice(0, ERROR_LIMIT)}`)
@@ -63,7 +66,7 @@ function firstImage(value: unknown): { b64_json?: string; url?: string; mime_typ
 
 async function downloadImage(url: string | undefined, input: { maxBytes: number; signal: AbortSignal }): Promise<GeneratedCompatibleImage> {
   if (url === undefined) throw new Error('seedream image editing returned no image data')
-  const response = await fetch(url, { redirect: 'follow', signal: input.signal })
+  const response = await fetchWithRetry(url, { redirect: 'follow' }, { signal: input.signal, retries: 2 })
   if (!response.ok) throw new Error(`seedream image download failed (${response.status})`)
   const mediaType = imageMediaType(response.headers.get('content-type'))
   if (mediaType === undefined) throw new Error('seedream image download returned unsupported content type')

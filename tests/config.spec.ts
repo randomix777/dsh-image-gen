@@ -14,12 +14,12 @@ import {
 
 describe('resolveProvider', () => {
   it('resolves the Google defaults', () => {
-    expect(resolveProvider({})).toEqual({ provider: 'google', apiKeyEnv: 'GEMINI_API_KEY', endpoint: DEFAULT_GOOGLE_ENDPOINT, model: DEFAULT_GOOGLE_MODEL, aspectRatio: '1:1', imageSize: '1K' })
+    expect(resolveProvider({})).toEqual({ provider: 'google', apiKeyEnv: 'GEMINI_API_KEY', endpoint: DEFAULT_GOOGLE_ENDPOINT, model: DEFAULT_GOOGLE_MODEL, aspectRatio: '1:1', imageSize: '1K', count: 1 })
   })
 
   it('resolves editable OpenAI-compatible profiles independently', () => {
-    expect(resolveProvider({ provider: 'openai' })).toEqual({ provider: 'openai', apiKeyEnv: 'OPENAI_API_KEY', baseURL: DEFAULT_OPENAI_BASE_URL, model: DEFAULT_OPENAI_MODEL, imageSize: '1024x1024' })
-    expect(resolveProvider({ provider: 'seedream' })).toEqual({ provider: 'seedream', apiKeyEnv: 'ARK_API_KEY', baseURL: DEFAULT_SEEDREAM_BASE_URL, model: DEFAULT_SEEDREAM_MODEL, imageSize: '2K' })
+    expect(resolveProvider({ provider: 'openai' })).toEqual({ provider: 'openai', apiKeyEnv: 'OPENAI_API_KEY', baseURL: DEFAULT_OPENAI_BASE_URL, model: DEFAULT_OPENAI_MODEL, imageSize: '1024x1024', count: 1 })
+    expect(resolveProvider({ provider: 'seedream' })).toEqual({ provider: 'seedream', apiKeyEnv: 'ARK_API_KEY', baseURL: DEFAULT_SEEDREAM_BASE_URL, model: DEFAULT_SEEDREAM_MODEL, imageSize: '2K', count: 1 })
   })
 
   it('resolves DashScope profile', () => {
@@ -29,6 +29,7 @@ describe('resolveProvider', () => {
       endpoint: DEFAULT_DASHSCOPE_ENDPOINT,
       model: DEFAULT_DASHSCOPE_MODEL,
       imageSize: '1024*1024',
+      count: 1,
     })
   })
 })
@@ -39,6 +40,16 @@ describe('Config Schema validation', () => {
     expect(validated.provider).toBe('dashscope')
     expect(validated.dashscopeModel).toBe(DEFAULT_DASHSCOPE_MODEL)
     expect(validated.dashscopeEndpoint).toBe(DEFAULT_DASHSCOPE_ENDPOINT)
+  })
+
+  it('defaults count to 1', () => {
+    const validated = Config({})
+    expect(validated.count).toBe(1)
+  })
+
+  it('resolves custom count into provider profile', () => {
+    const resolved = resolveProvider({ count: 4 })
+    expect(resolved.count).toBe(4)
   })
 })
 

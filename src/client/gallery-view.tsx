@@ -1,20 +1,60 @@
 /**
  * Native Workspace Gallery View Component for DSH `conversation.view` slot.
  * Fully i18n-reactive (Chinese & English).
+ * Optimized: paginated loads, in-memory image fetch cache, intersection-observer lazy loading.
  */
-import { useEffect, useState, useMemo, type FC, type MouseEvent } from 'react'
+import { useEffect, useState, useMemo, useRef, type FC, type MouseEvent } from 'react'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { IMAGE_ROUTE, type ImageProvider } from '../shared.js'
 import {
-  getGalleryItems,
+  getGalleryItemsPage,
   subscribeGallery,
   deleteGalleryItem,
   type GalleryItem,
+  type GalleryCursor,
 } from './gallery-store.js'
 
 export interface LocaleService {
   getSnapshot(): { active: string }
   subscribe(fn: () => void): () => void
+}
+
+/**
+ * In-memory cache for image fetches keyed by attachmentId.
+ * Deduplicates concurrent requests and prevents re-fetching the same image
+ * when multiple cards (e.g. gallery + generated-image card) reference it.
+ */
+interface ImageCacheEntry {
+  blob: Blob
+  url: string | null
+  error: string | null
+}
+
+const imageFetchCache = new Map<string, ImageCacheEntry>()
+
+async function fetchAndCacheImage(attachment: ImageAttachmentRef): Promise<{ blob: Blob; url: string | null; error: string | null }> {
+  const key = String(attachment.attachmentId)
+  const existing = imageFetchCache.get(key)
+  if (existing !== undefined) return existing
+
+  const p = fetch(IMAGE_ROUTE, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ attachment }),
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const blob = await response.blob()
+      return { blob, url: URL.createObjectURL(blob), error: null as string | null }
+    })
+    .catch((err) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return { blob: new Blob(), url: null as string | null, error: null }
+      return { blob: new Blob(), url: null as string | null, error: err instanceof Error ? err.message : String(err) }
+    })
+
+  const result = await p
+  imageFetchCache.set(key, { blob: result.blob, url: result.url, error: result.error })
+  return result
 }
 
 const DICT = {
@@ -43,6 +83,8 @@ const DICT = {
     model: '模型',
     prompt: 'Prompt',
     close: '关闭 (Esc)',
+    loadMore: '加载更多',
+    loadingMore: '加载中…',
   },
   en: {
     totalCount: '{count} images total',
@@ -69,6 +111,8 @@ const DICT = {
     model: 'Model',
     prompt: 'Prompt',
     close: 'Close (Esc)',
+    loadMore: 'Load More',
+    loadingMore: 'Loading…',
   },
 } as const
 
@@ -86,6 +130,9 @@ export const GalleryViewTab: FC<{ locale?: LocaleService }> = ({ locale }) => {
     const active = locale?.getSnapshot?.()?.active
     return active?.startsWith('en') ? 'en' : 'zh'
   })
+  const [cursor, setCursor] = useState<GalleryCursor | undefined>()
+  const [hasMore, setHasMore] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!locale?.subscribe) return
@@ -108,9 +155,7 @@ export const GalleryViewTab: FC<{ locale?: LocaleService }> = ({ locale }) => {
 
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => {
-      setToast(null)
-    }, 2000)
+    setTimeout(() => { setToast(null) }, 2000)
   }
 
   // Hide chat input composer while browsing gallery
@@ -119,26 +164,31 @@ export const GalleryViewTab: FC<{ locale?: LocaleService }> = ({ locale }) => {
     if (seat) {
       const prevDisplay = seat.style.display
       seat.style.display = 'none'
-      return () => {
-        seat.style.display = prevDisplay
-      }
+      return () => { seat.style.display = prevDisplay }
     }
   }, [])
 
+  /** Load the first page of gallery items. */
+  const loadPage = async (pageCursor?: GalleryCursor) => {
+    setLoading(true)
+    try {
+      const page = await getGalleryItemsPage(undefined, pageCursor)
+      setItems(prev => pageCursor ? [...prev, ...page.items] : page.items)
+      setHasMore(page.hasMore)
+      setCursor(page.nextCursor)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     let active = true
-    const load = () => {
-      void getGalleryItems().then((res) => {
-        if (active) setItems(res)
-      })
-    }
-    load()
-    const unsubscribe = subscribeGallery(load)
-    return () => {
-      active = false
-      unsubscribe()
-    }
+    void loadPage().catch(() => {})
+    const unsubscribe = subscribeGallery(() => { void loadPage() })
+    return () => { active = false; unsubscribe() }
   }, [])
+
+  const loadMore = () => { void loadPage(cursor) }
 
   useEffect(() => {
     if (!previewItem) return
@@ -244,6 +294,25 @@ export const GalleryViewTab: FC<{ locale?: LocaleService }> = ({ locale }) => {
             ))}
           </div>
         )}
+
+        {/* Load More button when there are more pages */}
+        {filteredItems.length > 0 && hasMore ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <button
+              className="dsh-ig-load-more"
+              onClick={() => { void loadMore() }}
+              disabled={loading}
+              style={{
+                appearance: 'none', border: '1px solid var(--dsw-alias-border-l2,#d7dbe0)', borderRadius: '8px',
+                padding: '8px 24px', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'inherit',
+                font: 'inherit', fontSize: '13px', cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.5 : 1, transition: 'background .15s',
+              }}
+            >
+              {loading ? (t('loadingMore') ?? '加载中…') : t('loadMore')}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {toast && <div className="dsh-ig-gallery-page-toast">{toast}</div>}
@@ -381,38 +450,53 @@ const GalleryCard: FC<GalleryCardProps> = ({ item, t, onPreview, onToast }) => {
   const [blob, setBlob] = useState<Blob>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const cachedEntry = useMemo(() => {
+    const key = String(item.attachment.attachmentId)
+    return imageFetchCache.get(key) ?? null
+  }, [item.attachment.attachmentId])
 
+  // Reuse cached result immediately if available
   useEffect(() => {
-    const controller = new AbortController()
+    if (!cachedEntry) return
+    if (cachedEntry.url) { setUrl(cachedEntry.url); setBlob(cachedEntry.blob); setLoading(false); return }
+    if (cachedEntry.error) { setError(cachedEntry.error); setLoading(false) }
+  }, [cachedEntry])
+
+  // IntersectionObserver: only start fetching when the card is in view
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || cachedEntry !== null) return
+    let observer: IntersectionObserver | null = null
     let objectUrl: string | undefined
 
-    void fetch(IMAGE_ROUTE, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ attachment: item.attachment }),
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const resBlob = await response.blob()
-        if (controller.signal.aborted) return
-        setBlob(resBlob)
-        objectUrl = URL.createObjectURL(resBlob)
-        setUrl(objectUrl)
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (!controller.signal.aborted) {
-          setError(err instanceof Error ? err.message : String(err))
-          setLoading(false)
+    const observeAndFetch = () => {
+      if (observer) observer.disconnect()
+      observer = new IntersectionObserver((entries) => {
+        if (entries[0]?.isIntersecting) {
+          observer?.disconnect()
+          observer = null
+          void fetchAndCacheImage(item.attachment).then(result => {
+            if (result.url) {
+              setBlob(result.blob)
+              objectUrl = result.url
+              setUrl(objectUrl)
+            } else if (result.error) {
+              setError(result.error)
+            }
+            setLoading(false)
+          })
         }
-      })
+      }, { rootMargin: '200px' }) // start loading 200px before visible
+      observer.observe(el)
+    }
 
+    observeAndFetch()
     return () => {
-      controller.abort()
+      observer?.disconnect()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [item.attachment])
+  }, [item.attachment, cachedEntry])
 
   const copyPrompt = async (e: MouseEvent) => {
     e.stopPropagation()
@@ -444,6 +528,7 @@ const GalleryCard: FC<GalleryCardProps> = ({ item, t, onPreview, onToast }) => {
 
   return (
     <div
+      ref={cardRef}
       className="dsh-ig-gallery-card"
       onClick={() => {
         if (url && blob) onPreview(url, blob)

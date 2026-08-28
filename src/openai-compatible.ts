@@ -1,5 +1,6 @@
 /** OpenAI Images API and compatible response adapter. */
 import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import { fetchWithRetry } from './http.js'
 
 const ERROR_LIMIT = 4096
 
@@ -22,12 +23,13 @@ export async function generateOpenAICompatibleImage(input: {
   size: string
   maxBytes: number
   signal: AbortSignal
+  count?: number
 }): Promise<GeneratedCompatibleImage> {
-  const response = await fetch(imageEndpoint(input.baseURL, 'generations'), {
-    method: 'POST', redirect: 'error', signal: input.signal,
+  const response = await fetchWithRetry(imageEndpoint(input.baseURL, 'generations'), {
+    method: 'POST', redirect: 'error',
     headers: { authorization: `Bearer ${input.apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: input.model, prompt: input.prompt, size: input.size, ...(input.provider === 'seedream' ? { response_format: 'url' } : {}) }),
-  })
+    body: JSON.stringify({ model: input.model, prompt: input.prompt, size: input.size, ...(input.provider === 'seedream' ? { response_format: 'url' } : {}), ...(input.count !== undefined && input.count > 1 ? { n: input.count } : {}) }),
+  }, { signal: input.signal })
   return parseImageResponse(response, input.provider, input)
 }
 
@@ -51,11 +53,11 @@ export async function editOpenAICompatibleImage(input: {
   form.append('model', input.model)
   if (input.size !== undefined && input.size.length > 0) form.append('size', input.size)
 
-  const response = await fetch(imageEndpoint(input.baseURL, 'edits'), {
-    method: 'POST', redirect: 'error', signal: input.signal,
+  const response = await fetchWithRetry(imageEndpoint(input.baseURL, 'edits'), {
+    method: 'POST', redirect: 'error',
     headers: { authorization: `Bearer ${input.apiKey}` },
     body: form,
-  })
+  }, { signal: input.signal })
   return parseImageResponse(response, 'openai', input)
 }
 
@@ -105,10 +107,10 @@ async function downloadImage(
     if (parsed === undefined) throw new Error(`${provider} image request returned invalid data URL`)
     return { data: decodeBase64(parsed.base64, provider), mediaType: imageMediaType(parsed.mediaType) ?? 'image/png' }
   }
-  const response = await fetch(url, {
-    redirect: 'follow', signal: input.signal,
+  const response = await fetchWithRetry(url, {
+    redirect: 'follow',
     ...(input.apiKey === undefined ? {} : { headers: { authorization: `Bearer ${input.apiKey}` } }),
-  })
+  }, { signal: input.signal, retries: 2 })
   if (!response.ok) throw new Error(`${provider} image download failed (${response.status})`)
   const mediaType = imageMediaType(response.headers.get('content-type'))
   if (mediaType === undefined) throw new Error(`${provider} image download returned unsupported content type`)

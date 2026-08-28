@@ -1,5 +1,8 @@
 /** DashScope Qwen Image generation and editing adapter. */
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import { fetchWithRetry } from './http.js'
+
+const ERROR_LIMIT = 4096
 
 export interface DashScopeImageOptions {
   apiKey: string
@@ -9,6 +12,7 @@ export interface DashScopeImageOptions {
   size?: string
   maxBytes: number
   signal?: AbortSignal
+  count?: number
 }
 
 export interface DashScopeEditOptions extends DashScopeImageOptions {
@@ -45,6 +49,7 @@ export async function generateDashScopeImage(options: DashScopeImageOptions): Pr
       },
       parameters: {
         ...(formattedSize === undefined ? {} : { size: formattedSize }),
+        ...(options.count !== undefined && options.count > 1 ? { n: options.count } : {}),
       },
     },
     operation: 'generation',
@@ -73,6 +78,7 @@ export async function editDashScopeImage(options: DashScopeEditOptions): Promise
       parameters: {
         prompt_extend: true,
         ...(formattedSize === undefined ? {} : { size: formattedSize }),
+        ...(options.count !== undefined && options.count > 1 ? { n: options.count } : {}),
       },
     },
     operation: 'editing',
@@ -99,22 +105,26 @@ async function requestQwenImage(options: DashScopeImageOptions & {
   operation: 'generation' | 'editing'
 }): Promise<{ data: Uint8Array; mediaType: ImageAttachmentRef['mediaType'] }> {
   const base = options.endpoint.replace(/\/+$/, '')
-  const response = await fetch(`${base}/services/aigc/multimodal-generation/generation`, {
+  const response = await fetchWithRetry(`${base}/services/aigc/multimodal-generation/generation`, {
     method: 'POST',
-    ...(options.signal ? { signal: options.signal } : {}),
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${options.apiKey}`,
     },
     body: JSON.stringify(options.requestBody),
-  })
+  }, { ...(options.signal === undefined ? {} : { signal: options.signal }) })
 
+  const text = await readBoundedText(response, Math.ceil(options.maxBytes * 1.4) + ERROR_LIMIT)
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`DashScope image ${options.operation} failed (${String(response.status)}): ${errorText}`)
+    throw new Error(`DashScope image ${options.operation} failed (${String(response.status)}): ${text.slice(0, ERROR_LIMIT)}`)
   }
 
-  const payload = (await response.json()) as DashScopeResponse
+  let payload: DashScopeResponse
+  try {
+    payload = JSON.parse(text) as DashScopeResponse
+  } catch {
+    throw new Error(`DashScope image ${options.operation} returned invalid JSON`)
+  }
   const imageUrl = extractImageUrl(payload)
   if (imageUrl === undefined) {
     throw new Error(`DashScope image ${options.operation} returned no image URL: ${payload.message ?? JSON.stringify(payload)}`)
@@ -137,20 +147,42 @@ async function downloadImageBlob(
   imageUrl: string,
   options: DashScopeImageOptions,
 ): Promise<{ data: Uint8Array; mediaType: ImageAttachmentRef['mediaType'] }> {
-  const imageResponse = await fetch(imageUrl, {
-    ...(options.signal ? { signal: options.signal } : {}),
-  })
+  const imageResponse = await fetchWithRetry(imageUrl, {}, { retries: 2, ...(options.signal === undefined ? {} : { signal: options.signal }) })
   if (!imageResponse.ok) {
     throw new Error(`Failed to fetch DashScope image from URL (${String(imageResponse.status)})`)
   }
-  const buffer = await imageResponse.arrayBuffer()
-  if (buffer.byteLength > options.maxBytes) {
-    throw new Error(`DashScope generated image (${String(buffer.byteLength)} bytes) exceeds the ${String(options.maxBytes)} byte limit`)
-  }
+  const buffer = await readBoundedBytes(imageResponse, options.maxBytes)
   const contentType = imageResponse.headers.get('content-type')
   const mediaType: ImageAttachmentRef['mediaType'] =
     contentType?.includes('png') ? 'image/png' :
     contentType?.includes('webp') ? 'image/webp' :
     'image/jpeg'
-  return { data: new Uint8Array(buffer), mediaType }
+  return { data: buffer, mediaType }
+}
+
+async function readBoundedText(response: Response, maxBytes: number): Promise<string> {
+  return new TextDecoder().decode(await readBoundedBytes(response, maxBytes))
+}
+
+/** Stream the body with a hard byte cap so a runaway response cannot OOM. */
+async function readBoundedBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
+  if (response.body === null) return new Uint8Array()
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let bytes = 0
+  try {
+    for (;;) {
+      const next = await reader.read()
+      if (next.done) break
+      bytes += next.value.byteLength
+      if (bytes > maxBytes) throw new Error(`DashScope image response exceeded the ${String(maxBytes)} byte limit`)
+      chunks.push(next.value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const joined = new Uint8Array(bytes)
+  let offset = 0
+  for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength }
+  return joined
 }

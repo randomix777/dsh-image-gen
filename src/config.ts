@@ -56,6 +56,8 @@ export interface Config {
   seedreamModel?: string
   dashscopeEndpoint?: string
   dashscopeModel?: string
+  /** Number of images to generate per call; defaults to 1. */
+  count?: number
   /** Also write every generated image as a file under the session workspace. */
   saveToWorkspace?: boolean
   /** Workspace subfolder for generated images; empty means the workspace root. */
@@ -73,20 +75,22 @@ export const Config: z<Config> = z.object({
   seedreamModel: z.string().default(DEFAULT_SEEDREAM_MODEL),
   dashscopeEndpoint: z.string().default(DEFAULT_DASHSCOPE_ENDPOINT),
   dashscopeModel: z.string().default(DEFAULT_DASHSCOPE_MODEL),
+  count: z.number().min(1).max(16).default(1),
   saveToWorkspace: z.boolean().default(true),
   workspaceFolder: z.string().default(DEFAULT_WORKSPACE_FOLDER),
 })
 
 /** Resolve exactly one provider profile for a tool call. */
 export function resolveProvider(config: Config):
-  | { provider: 'google'; apiKeyEnv: string; model: string; endpoint: string; aspectRatio: AspectRatio; imageSize: ImageSize }
-  | { provider: 'openai'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string }
-  | { provider: 'seedream'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string }
-  | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string } {
+  | { provider: 'google'; apiKeyEnv: string; model: string; endpoint: string; aspectRatio: AspectRatio; imageSize: ImageSize; count: number }
+  | { provider: 'openai'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
+  | { provider: 'seedream'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
+  | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string; count: number } {
+  const count = config.count ?? 1
   switch (config.provider ?? 'google') {
-    case 'openai': return { provider: 'openai', apiKeyEnv: OPENAI_API_KEY_ENV, model: config.openaiModel ?? DEFAULT_OPENAI_MODEL, baseURL: config.openaiBaseURL ?? DEFAULT_OPENAI_BASE_URL, imageSize: '1024x1024' }
-    case 'seedream': return { provider: 'seedream', apiKeyEnv: SEEDREAM_API_KEY_ENV, model: config.seedreamModel ?? DEFAULT_SEEDREAM_MODEL, baseURL: config.seedreamBaseURL ?? DEFAULT_SEEDREAM_BASE_URL, imageSize: '2K' }
-    case 'dashscope': return { provider: 'dashscope', apiKeyEnv: DASHSCOPE_API_KEY_ENV, model: config.dashscopeModel ?? DEFAULT_DASHSCOPE_MODEL, endpoint: config.dashscopeEndpoint ?? DEFAULT_DASHSCOPE_ENDPOINT, imageSize: '1024*1024' }
-    case 'google': return { provider: 'google', apiKeyEnv: GOOGLE_API_KEY_ENV, model: config.googleModel ?? DEFAULT_GOOGLE_MODEL, endpoint: config.googleEndpoint ?? DEFAULT_GOOGLE_ENDPOINT, aspectRatio: '1:1', imageSize: '1K' }
+    case 'openai': return { provider: 'openai', apiKeyEnv: OPENAI_API_KEY_ENV, model: config.openaiModel ?? DEFAULT_OPENAI_MODEL, baseURL: config.openaiBaseURL ?? DEFAULT_OPENAI_BASE_URL, imageSize: '1024x1024', count }
+    case 'seedream': return { provider: 'seedream', apiKeyEnv: SEEDREAM_API_KEY_ENV, model: config.seedreamModel ?? DEFAULT_SEEDREAM_MODEL, baseURL: config.seedreamBaseURL ?? DEFAULT_SEEDREAM_BASE_URL, imageSize: '2K', count }
+    case 'dashscope': return { provider: 'dashscope', apiKeyEnv: DASHSCOPE_API_KEY_ENV, model: config.dashscopeModel ?? DEFAULT_DASHSCOPE_MODEL, endpoint: config.dashscopeEndpoint ?? DEFAULT_DASHSCOPE_ENDPOINT, imageSize: '1024*1024', count }
+    case 'google': return { provider: 'google', apiKeyEnv: GOOGLE_API_KEY_ENV, model: config.googleModel ?? DEFAULT_GOOGLE_MODEL, endpoint: config.googleEndpoint ?? DEFAULT_GOOGLE_ENDPOINT, aspectRatio: '1:1', imageSize: '1K', count }
   }
 }

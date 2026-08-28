@@ -1,6 +1,7 @@
 /** Google Gemini Interactions API adapter. */
 import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { AspectRatio, ImageSize } from './config.js'
+import { fetchWithRetry } from './http.js'
 
 const ERROR_LIMIT = 4096
 const REQUESTED_MEDIA_TYPE = 'image/jpeg'
@@ -19,6 +20,7 @@ interface GoogleRequestBase {
   imageSize: ImageSize
   maxBytes: number
   signal: AbortSignal
+  count: number
 }
 
 /** Send one native Google text-to-image request. */
@@ -55,10 +57,9 @@ async function requestGoogleImage(input: GoogleRequestBase & {
   interactionInput: string | Array<Record<string, string>>
 }): Promise<GeneratedImage> {
   const label = `Google image ${input.operation}`
-  const response = await fetch(input.endpoint, {
+  const response = await fetchWithRetry(input.endpoint, {
     method: 'POST',
     redirect: 'error',
-    signal: input.signal,
     headers: { 'content-type': 'application/json', 'x-goog-api-key': input.apiKey },
     body: JSON.stringify({
       model: input.model,
@@ -68,9 +69,10 @@ async function requestGoogleImage(input: GoogleRequestBase & {
         mime_type: REQUESTED_MEDIA_TYPE,
         aspect_ratio: input.aspectRatio,
         image_size: input.imageSize,
+        ...(input.count > 1 ? { n: input.count } : {}),
       },
     }),
-  })
+  }, { signal: input.signal })
   const text = await readBoundedText(response, Math.ceil(input.maxBytes * 1.4) + ERROR_LIMIT, label)
   if (!response.ok) throw new Error(`${label} failed (${response.status}): ${text.slice(0, ERROR_LIMIT)}`)
   let payload: unknown

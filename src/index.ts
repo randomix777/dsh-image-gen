@@ -48,26 +48,42 @@ export function apply(ctx: Context, config: Config = {}): void {
       aspect_ratio: { type: 'string', enum: ['1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'], description: 'Optional output aspect ratio for Google Gemini.' },
       image_size: { type: 'string', enum: ['1K', '2K', '4K'], description: 'Optional output resolution for Google Gemini.' },
       size: { type: 'string', description: 'Optional dimensions or size tier for OpenAI, Seedream, or DashScope.' },
+      count: { type: 'integer', description: 'Optional number of images to generate. Defaults to configured count.' },
     },
     output: imageOutput('Generated'),
     async execute(args, exec): Promise<GeneratedValue> {
       const active = resolveProvider(current())
       const credential = await ctx.credentials.resolve(credentialRef(active.apiKeyEnv))
       if (credential === undefined || credential.value.length === 0) throw new Error(`generate_image requires the ${active.apiKeyEnv} credential; configure it in Settings > Plugins > Image generation.`)
-      if (active.provider === 'google') {
-        const aspectRatio = (args.aspect_ratio ?? active.aspectRatio) as AspectRatio
-        const imageSize = (args.image_size ?? active.imageSize) as ImageSize
-        const generated = await generateGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, aspectRatio, imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-        return saveGenerated(ctx, generated, active.provider, active.model, `${aspectRatio}, ${imageSize}`, current(), exec)
-      }
-      if (active.provider === 'dashscope') {
+      const count = typeof args.count === 'number' && args.count >= 1 ? args.count : active.count
+      if (count <= 1) {
+        if (active.provider === 'google') {
+          const aspectRatio = (args.aspect_ratio ?? active.aspectRatio) as AspectRatio
+          const imageSize = (args.image_size ?? active.imageSize) as ImageSize
+          const generated = await generateGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, aspectRatio, imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          return saveGenerated(ctx, generated, active.provider, active.model, `${aspectRatio}, ${imageSize}`, current(), exec)
+        }
+        if (active.provider === 'dashscope') {
+          const size = args.size ?? active.imageSize
+          const generated = await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+        }
         const size = args.size ?? active.imageSize
-        const generated = await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+        const generated = await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
         return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
       }
-      const size = args.size ?? active.imageSize
-      const generated = await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-      return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+      // Batch: generate multiple images, return the last one (all are saved)
+      let last: GeneratedValue | undefined
+      for (let i = 0; i < count; i++) {
+        const generated = active.provider === 'google'
+          ? await generateGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, aspectRatio: (args.aspect_ratio ?? active.aspectRatio) as AspectRatio, imageSize: (args.image_size ?? active.imageSize) as ImageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          : active.provider === 'dashscope'
+            ? await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+            : await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+        const output = active.provider === 'google' ? `${args.aspect_ratio ?? active.aspectRatio}, ${args.image_size ?? active.imageSize}` : args.size ?? active.imageSize
+        last = await saveGenerated(ctx, generated, active.provider, active.model, output, current(), exec)
+      }
+      return last!
     },
     presentResult: (_args, result) => imagePresentation(result),
   }))
@@ -101,24 +117,40 @@ export function apply(ctx: Context, config: Config = {}): void {
         signal: exec.signal,
       })
 
-      if (active.provider === 'google') {
-        const aspectRatio = (args.aspect_ratio ?? active.aspectRatio) as AspectRatio
-        const imageSize = (args.image_size ?? active.imageSize) as ImageSize
-        const generated = await editGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, aspectRatio, imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-        return saveGenerated(ctx, generated, active.provider, active.model, `${aspectRatio}, ${imageSize}`, current(), exec)
-      }
-
-      const size = args.size ?? active.imageSize
-      if (active.provider === 'openai') {
-        const generated = await editOpenAICompatibleImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+      const count = active.count
+      if (count <= 1) {
+        if (active.provider === 'google') {
+          const aspectRatio = (args.aspect_ratio ?? active.aspectRatio) as AspectRatio
+          const imageSize = (args.image_size ?? active.imageSize) as ImageSize
+          const generated = await editGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, aspectRatio, imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          return saveGenerated(ctx, generated, active.provider, active.model, `${aspectRatio}, ${imageSize}`, current(), exec)
+        }
+        const size = args.size ?? active.imageSize
+        if (active.provider === 'openai') {
+          const generated = await editOpenAICompatibleImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+          return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+        }
+        if (active.provider === 'seedream') {
+          const generated = await editSeedreamImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+          return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+        }
+        const generated = await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
         return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
       }
-      if (active.provider === 'seedream') {
-        const generated = await editSeedreamImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-        return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+      // Batch: generate multiple edits, return the last one (all are saved)
+      let last: GeneratedValue | undefined
+      for (let i = 0; i < count; i++) {
+        const generated = active.provider === 'google'
+          ? await editGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, aspectRatio: (args.aspect_ratio ?? active.aspectRatio) as AspectRatio, imageSize: (args.image_size ?? active.imageSize) as ImageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          : active.provider === 'openai'
+            ? await editOpenAICompatibleImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+            : active.provider === 'seedream'
+              ? await editSeedreamImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+              : await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+        const output = active.provider === 'google' ? `${args.aspect_ratio ?? active.aspectRatio}, ${args.image_size ?? active.imageSize}` : args.size ?? active.imageSize
+        last = await saveGenerated(ctx, generated, active.provider, active.model, output, current(), exec)
       }
-      const generated = await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-      return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+      return last!
     },
     presentResult: (_args, result) => imagePresentation(result),
   }))
