@@ -5,12 +5,16 @@ import {
   DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
+  DEFAULT_GLM_BASE_URL,
+  DEFAULT_GLM_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
   DEFAULT_GOOGLE_MODEL,
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_OPENAI_MODEL,
   DEFAULT_SEEDREAM_BASE_URL,
   DEFAULT_SEEDREAM_MODEL,
+  DEFAULT_STABILITY_BASE_URL,
+  DEFAULT_STABILITY_MODEL,
   resolveProvider,
 } from '../src/config.js'
 
@@ -31,6 +35,28 @@ describe('resolveProvider', () => {
       baseURL: DEFAULT_AGNES_BASE_URL,
       model: DEFAULT_AGNES_MODEL,
       imageSize: '1K',
+      count: 1,
+    })
+  })
+
+  it('resolves GLM profile', () => {
+    expect(resolveProvider({ provider: 'glm' })).toEqual({
+      provider: 'glm',
+      apiKeyEnv: 'ZHIPU_API_KEY',
+      baseURL: DEFAULT_GLM_BASE_URL,
+      model: DEFAULT_GLM_MODEL,
+      imageSize: '1280x1280',
+      count: 1,
+    })
+  })
+
+  it('resolves Stability profile', () => {
+    expect(resolveProvider({ provider: 'stability' })).toEqual({
+      provider: 'stability',
+      apiKeyEnv: 'STABILITY_API_KEY',
+      baseURL: DEFAULT_STABILITY_BASE_URL,
+      model: DEFAULT_STABILITY_MODEL,
+      imageSize: '1024x1024',
       count: 1,
     })
   })

@@ -9,10 +9,12 @@ import { Config, resolveProvider, type AspectRatio, type ImageProvider, type Ima
 import { editDashScopeImage, generateDashScopeImage } from './dashscope.js'
 import { editAgnesImage, generateAgnesImage } from './agnes.js'
 import { editGoogleImage, generateGoogleImage } from './google.js'
+import { generateGlmImage } from './glm.js'
 import { IMAGE_ROUTE, imageAttachmentFromMeta, serveImage } from './image-route.js'
 import { editOpenAICompatibleImage, generateOpenAICompatibleImage } from './openai-compatible.js'
 import { resolveReferenceImages } from './reference-image.js'
 import { editSeedreamImage } from './seedream.js'
+import { generateStabilityImage } from './stability.js'
 import { IMAGE_GENERATION_NAMESPACE } from './shared.js'
 import { saveImageToWorkspace } from './workspace-save.js'
 
@@ -75,6 +77,16 @@ export function apply(ctx: Context, config: Config = {}): void {
           const generated = await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
           return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
         }
+        if (active.provider === 'glm') {
+          const size = args.size ?? active.imageSize
+          const generated = await generateGlmImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+          return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+        }
+        if (active.provider === 'stability') {
+          const size = args.size ?? active.imageSize
+          const generated = await generateStabilityImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+          return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
+        }
         const size = args.size ?? active.imageSize
         const generated = await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
         return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
@@ -87,8 +99,12 @@ export function apply(ctx: Context, config: Config = {}): void {
           : active.provider === 'dashscope'
             ? await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
             : active.provider === 'agnes'
-              ? await generateAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
-              : await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+             ? await generateAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
+             : active.provider === 'glm'
+               ? await generateGlmImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+               : active.provider === 'stability'
+                 ? await generateStabilityImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+                 : await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
         const output = active.provider === 'google' ? `${args.aspect_ratio ?? active.aspectRatio}, ${args.image_size ?? active.imageSize}` : args.size ?? active.imageSize
         last = await saveGenerated(ctx, generated, active.provider, active.model, output, current(), exec)
       }
@@ -148,6 +164,9 @@ export function apply(ctx: Context, config: Config = {}): void {
           const generated = await editAgnesImage({ ...genArgs, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
           return saveGenerated(ctx, generated, active.provider, active.model, args.size ?? active.imageSize, current(), exec)
         }
+        if (active.provider === 'glm' || active.provider === 'stability') {
+          throw new Error(`${active.provider} does not support edit_image; use a different provider.`)
+        }
         const generated = await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
         return saveGenerated(ctx, generated, active.provider, active.model, size, current(), exec)
       }
@@ -160,9 +179,11 @@ export function apply(ctx: Context, config: Config = {}): void {
             ? await editOpenAICompatibleImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
             : active.provider === 'seedream'
               ? await editSeedreamImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-              : active.provider === 'agnes'
-                ? await editAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
-                : await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
+               : active.provider === 'agnes'
+                 ? await editAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
+                 : active.provider === 'glm' || active.provider === 'stability'
+                   ? (() => { throw new Error(`${active.provider} does not support edit_image; use a different provider.`) })()
+                   : await editDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, sourceImages, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
         const output = active.provider === 'google' ? `${args.aspect_ratio ?? active.aspectRatio}, ${args.image_size ?? active.imageSize}` : args.size ?? active.imageSize
         last = await saveGenerated(ctx, generated, active.provider, active.model, output, current(), exec)
       }

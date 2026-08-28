@@ -32,6 +32,10 @@ interface ImageSettings {
   dashscopeModel?: string
   agnesBaseURL?: string
   agnesModel?: string
+  glmBaseURL?: string
+  glmModel?: string
+  stabilityBaseURL?: string
+  stabilityModel?: string
   saveToWorkspace?: boolean
   workspaceFolder?: string
 }
@@ -46,6 +50,8 @@ const KEY_REF: Record<Provider, string> = {
   seedream: 'ARK_API_KEY',
   dashscope: 'DASHSCOPE_API_KEY',
   agnes: 'AGNES_API_KEY',
+  glm: 'ZHIPU_API_KEY',
+  stability: 'STABILITY_API_KEY',
 }
 
 const DICT = {
@@ -58,6 +64,8 @@ const DICT = {
     providerSeedream: '字节 Seedream',
     providerDashScope: '阿里 DashScope (通义万相 / Qwen)',
     providerAgnes: 'Agnes AI (Image 2.1 Flash)',
+    providerGlm: '智谱 GLM-Image',
+    providerStability: 'Stability AI',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: '留空即可保留已配置的 Key',
     apiKeyHint: '安全保存为 {key}；页面不会读回明文。',
@@ -69,6 +77,8 @@ const DICT = {
     endpointHintSeedream: '火山方舟兼容的 /api/v3 地址。',
     endpointHintDashScope: '阿里云百炼 DashScope 官方接口地址。',
     endpointHintAgnes: 'Agnes AI Hub 兼容的 /v1 地址。',
+    endpointHintGlm: '智谱开放平台 API 地址（/api/paas/v4）。',
+    endpointHintStability: 'Stability AI API 地址（https://api.stability.ai）。',
     model: '模型',
     saveToWorkspace: '保存到工作区',
     saveToWorkspaceHint: '每次生成后，把图片文件保存到当前会话工作区。',
@@ -100,6 +110,8 @@ const DICT = {
     providerSeedream: 'ByteDance Seedream',
     providerDashScope: 'Aliyun DashScope (Wanx / Qwen)',
     providerAgnes: 'Agnes AI (Image 2.1 Flash)',
+    providerGlm: 'Zhipu GLM-Image',
+    providerStability: 'Stability AI',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: 'Leave empty to keep configured key',
     apiKeyHint: 'Securely saved as {key}; never read back in plaintext.',
@@ -111,6 +123,8 @@ const DICT = {
     endpointHintSeedream: 'Volcengine Ark compatible /api/v3 base URL.',
     endpointHintDashScope: 'Official Aliyun DashScope endpoint.',
     endpointHintAgnes: 'Agnes AI Hub compatible /v1 base URL.',
+    endpointHintGlm: 'Zhipu AI API base URL (includes /api/paas/v4).',
+    endpointHintStability: 'Stability AI API base URL.',
     model: 'Model',
     saveToWorkspace: 'Save to workspace',
     saveToWorkspaceHint: 'Write each generated image as a file into the session workspace.',
@@ -326,6 +340,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
     seedream: t('providerSeedream'),
     dashscope: t('providerDashScope'),
     agnes: t('providerAgnes'),
+    glm: t('providerGlm'),
+    stability: t('providerStability'),
   }
 
   useEffect(() => {
@@ -348,8 +364,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
     event.preventDefault(); setSaving(true); setMessage('')
     try {
       await props.scope.set('provider', provider)
-      await props.scope.set(provider === 'google' ? 'googleModel' : provider === 'openai' ? 'openaiModel' : provider === 'seedream' ? 'seedreamModel' : provider === 'dashscope' ? 'dashscopeModel' : 'agnesModel', model)
-      await props.scope.set(provider === 'google' ? 'googleEndpoint' : provider === 'openai' ? 'openaiBaseURL' : provider === 'seedream' ? 'seedreamBaseURL' : provider === 'dashscope' ? 'dashscopeEndpoint' : 'agnesBaseURL', baseURL)
+      await props.scope.set(provider === 'google' ? 'googleModel' : provider === 'openai' ? 'openaiModel' : provider === 'seedream' ? 'seedreamModel' : provider === 'dashscope' ? 'dashscopeModel' : provider === 'agnes' ? 'agnesModel' : provider === 'glm' ? 'glmModel' : 'stabilityModel', model)
+      await props.scope.set(provider === 'google' ? 'googleEndpoint' : provider === 'openai' ? 'openaiBaseURL' : provider === 'seedream' ? 'seedreamBaseURL' : provider === 'dashscope' ? 'dashscopeEndpoint' : provider === 'agnes' ? 'agnesBaseURL' : provider === 'glm' ? 'glmBaseURL' : 'stabilityBaseURL', baseURL)
       await props.scope.set('saveToWorkspace', saveToWorkspace)
       await props.scope.set('workspaceFolder', workspaceFolder.trim())
       if (key.trim().length > 0) {
@@ -384,6 +400,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
               <option value="seedream">{t('providerSeedream')}</option>
               <option value="dashscope">{t('providerDashScope')}</option>
               <option value="agnes">{t('providerAgnes')}</option>
+              <option value="glm">{t('providerGlm')}</option>
+              <option value="stability">{t('providerStability')}</option>
             </select>
             <span className="dsh-ig-hint">{providerLabels[provider]}</span>
           </label>
@@ -579,12 +597,12 @@ export function GeneratedImageCard(props: ImageCardProps) {
 }
 
 function modelOf(provider: Provider, value: ImageSettings | undefined): string {
-  const stored = provider === 'google' ? value?.googleModel : provider === 'openai' ? value?.openaiModel : provider === 'seedream' ? value?.seedreamModel : provider === 'dashscope' ? value?.dashscopeModel : value?.agnesModel
+  const stored = provider === 'google' ? value?.googleModel : provider === 'openai' ? value?.openaiModel : provider === 'seedream' ? value?.seedreamModel : provider === 'dashscope' ? value?.dashscopeModel : provider === 'agnes' ? value?.agnesModel : provider === 'glm' ? value?.glmModel : value?.stabilityModel
   return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_MODELS[provider]
 }
 
 function baseURLOf(provider: Provider, value: ImageSettings | undefined): string {
-  const stored = provider === 'google' ? value?.googleEndpoint : provider === 'openai' ? value?.openaiBaseURL : provider === 'seedream' ? value?.seedreamBaseURL : provider === 'dashscope' ? value?.dashscopeEndpoint : value?.agnesBaseURL
+  const stored = provider === 'google' ? value?.googleEndpoint : provider === 'openai' ? value?.openaiBaseURL : provider === 'seedream' ? value?.seedreamBaseURL : provider === 'dashscope' ? value?.dashscopeEndpoint : provider === 'agnes' ? value?.agnesBaseURL : provider === 'glm' ? value?.glmBaseURL : value?.stabilityBaseURL
   return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_BASE_URLS[provider]
 }
 

@@ -6,12 +6,16 @@ import {
   DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
+  DEFAULT_GLM_BASE_URL,
+  DEFAULT_GLM_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
   DEFAULT_GOOGLE_MODEL,
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_OPENAI_MODEL,
   DEFAULT_SEEDREAM_BASE_URL,
   DEFAULT_SEEDREAM_MODEL,
+  DEFAULT_STABILITY_BASE_URL,
+  DEFAULT_STABILITY_MODEL,
   IMAGE_PROVIDERS,
   type ImageProvider,
 } from './shared.js'
@@ -21,12 +25,16 @@ export {
   DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
+  DEFAULT_GLM_BASE_URL,
+  DEFAULT_GLM_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
   DEFAULT_GOOGLE_MODEL,
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_OPENAI_MODEL,
   DEFAULT_SEEDREAM_BASE_URL,
   DEFAULT_SEEDREAM_MODEL,
+  DEFAULT_STABILITY_BASE_URL,
+  DEFAULT_STABILITY_MODEL,
   IMAGE_PROVIDERS,
   type ImageProvider,
 }
@@ -44,6 +52,10 @@ export const SEEDREAM_API_KEY_ENV = 'ARK_API_KEY'
 export const DASHSCOPE_API_KEY_ENV = 'DASHSCOPE_API_KEY'
 /** Agnes AI credential reference. */
 export const AGNES_API_KEY_ENV = 'AGNES_API_KEY'
+/** Zhipu AI (GLM) credential reference. */
+export const GLM_API_KEY_ENV = 'ZHIPU_API_KEY'
+/** Stability AI credential reference. */
+export const STABILITY_API_KEY_ENV = 'STABILITY_API_KEY'
 
 /** Google tool-level controls. */
 export const ASPECT_RATIOS = ['1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'] as const
@@ -64,6 +76,10 @@ export interface Config {
   dashscopeModel?: string
   agnesBaseURL?: string
   agnesModel?: string
+  glmBaseURL?: string
+  glmModel?: string
+  stabilityBaseURL?: string
+  stabilityModel?: string
   /** Number of images to generate per call; defaults to 1. */
   count?: number
   /** Also write every generated image as a file under the session workspace. */
@@ -85,6 +101,10 @@ export const Config: z<Config> = z.object({
   dashscopeModel: z.string().default(DEFAULT_DASHSCOPE_MODEL),
   agnesBaseURL: z.string().default(DEFAULT_AGNES_BASE_URL),
   agnesModel: z.string().default(DEFAULT_AGNES_MODEL),
+  glmBaseURL: z.string().default(DEFAULT_GLM_BASE_URL),
+  glmModel: z.string().default(DEFAULT_GLM_MODEL),
+  stabilityBaseURL: z.string().default(DEFAULT_STABILITY_BASE_URL),
+  stabilityModel: z.string().default(DEFAULT_STABILITY_MODEL),
   count: z.number().min(1).max(16).default(1),
   saveToWorkspace: z.boolean().default(true),
   workspaceFolder: z.string().default(DEFAULT_WORKSPACE_FOLDER),
@@ -96,13 +116,17 @@ export function resolveProvider(config: Config):
   | { provider: 'openai'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'seedream'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string; count: number }
-  | { provider: 'agnes'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number } {
+  | { provider: 'agnes'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
+  | { provider: 'glm'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
+  | { provider: 'stability'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number } {
   const count = config.count ?? 1
   switch (config.provider ?? 'google') {
     case 'openai': return { provider: 'openai', apiKeyEnv: OPENAI_API_KEY_ENV, model: config.openaiModel ?? DEFAULT_OPENAI_MODEL, baseURL: config.openaiBaseURL ?? DEFAULT_OPENAI_BASE_URL, imageSize: '1024x1024', count }
     case 'seedream': return { provider: 'seedream', apiKeyEnv: SEEDREAM_API_KEY_ENV, model: config.seedreamModel ?? DEFAULT_SEEDREAM_MODEL, baseURL: config.seedreamBaseURL ?? DEFAULT_SEEDREAM_BASE_URL, imageSize: '2K', count }
     case 'dashscope': return { provider: 'dashscope', apiKeyEnv: DASHSCOPE_API_KEY_ENV, model: config.dashscopeModel ?? DEFAULT_DASHSCOPE_MODEL, endpoint: config.dashscopeEndpoint ?? DEFAULT_DASHSCOPE_ENDPOINT, imageSize: '1024*1024', count }
     case 'agnes': return { provider: 'agnes', apiKeyEnv: AGNES_API_KEY_ENV, model: config.agnesModel ?? DEFAULT_AGNES_MODEL, baseURL: config.agnesBaseURL ?? DEFAULT_AGNES_BASE_URL, imageSize: '1K', count }
+    case 'glm': return { provider: 'glm', apiKeyEnv: GLM_API_KEY_ENV, model: config.glmModel ?? DEFAULT_GLM_MODEL, baseURL: config.glmBaseURL ?? DEFAULT_GLM_BASE_URL, imageSize: '1280x1280', count }
+    case 'stability': return { provider: 'stability', apiKeyEnv: STABILITY_API_KEY_ENV, model: config.stabilityModel ?? DEFAULT_STABILITY_MODEL, baseURL: config.stabilityBaseURL ?? DEFAULT_STABILITY_BASE_URL, imageSize: '1024x1024', count }
     case 'google': return { provider: 'google', apiKeyEnv: GOOGLE_API_KEY_ENV, model: config.googleModel ?? DEFAULT_GOOGLE_MODEL, endpoint: config.googleEndpoint ?? DEFAULT_GOOGLE_ENDPOINT, aspectRatio: '1:1', imageSize: '1K', count }
   }
 }

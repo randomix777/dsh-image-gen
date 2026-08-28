@@ -6,7 +6,7 @@ export const IMAGE_ROUTE = '/plugins/dsh-image-gen/image'
 export const IMAGE_GENERATION_NAMESPACE = 'image-generation'
 
 /** Supported providers. */
-export const IMAGE_PROVIDERS = ['google', 'openai', 'seedream', 'dashscope', 'agnes'] as const
+export const IMAGE_PROVIDERS = ['google', 'openai', 'seedream', 'dashscope', 'agnes', 'glm', 'stability'] as const
 export type ImageProvider = typeof IMAGE_PROVIDERS[number]
 
 /** Default endpoints and base URLs. */
@@ -15,6 +15,8 @@ export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_SEEDREAM_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
 export const DEFAULT_DASHSCOPE_ENDPOINT = 'https://dashscope.aliyuncs.com/api/v1'
 export const DEFAULT_AGNES_BASE_URL = 'https://apihub.agnes-ai.com/v1'
+export const DEFAULT_GLM_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4'
+export const DEFAULT_STABILITY_BASE_URL = 'https://api.stability.ai'
 
 /** Default model names. */
 export const DEFAULT_GOOGLE_MODEL = 'gemini-3.1-flash-image'
@@ -22,6 +24,8 @@ export const DEFAULT_OPENAI_MODEL = 'gpt-image-2'
 export const DEFAULT_SEEDREAM_MODEL = 'doubao-seedream-5-0-260128'
 export const DEFAULT_DASHSCOPE_MODEL = 'qwen-image-3.0'
 export const DEFAULT_AGNES_MODEL = 'agnes-image-2.1-flash'
+export const DEFAULT_GLM_MODEL = 'glm-image'
+export const DEFAULT_STABILITY_MODEL = 'stable-diffusion-xl-1.0'
 
 export const DEFAULT_MODELS: Record<ImageProvider, string> = {
   google: DEFAULT_GOOGLE_MODEL,
@@ -29,6 +33,8 @@ export const DEFAULT_MODELS: Record<ImageProvider, string> = {
   seedream: DEFAULT_SEEDREAM_MODEL,
   dashscope: DEFAULT_DASHSCOPE_MODEL,
   agnes: DEFAULT_AGNES_MODEL,
+  glm: DEFAULT_GLM_MODEL,
+  stability: DEFAULT_STABILITY_MODEL,
 }
 
 export const DEFAULT_BASE_URLS: Record<ImageProvider, string> = {
@@ -37,4 +43,6 @@ export const DEFAULT_BASE_URLS: Record<ImageProvider, string> = {
   seedream: DEFAULT_SEEDREAM_BASE_URL,
   dashscope: DEFAULT_DASHSCOPE_ENDPOINT,
   agnes: DEFAULT_AGNES_BASE_URL,
+  glm: DEFAULT_GLM_BASE_URL,
+  stability: DEFAULT_STABILITY_BASE_URL,
 }
