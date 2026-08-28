@@ -30,6 +30,8 @@ interface ImageSettings {
   seedreamModel?: string
   dashscopeEndpoint?: string
   dashscopeModel?: string
+  agnesBaseURL?: string
+  agnesModel?: string
   saveToWorkspace?: boolean
   workspaceFolder?: string
 }
@@ -43,6 +45,7 @@ const KEY_REF: Record<Provider, string> = {
   openai: 'OPENAI_API_KEY',
   seedream: 'ARK_API_KEY',
   dashscope: 'DASHSCOPE_API_KEY',
+  agnes: 'AGNES_API_KEY',
 }
 
 const DICT = {
@@ -54,6 +57,7 @@ const DICT = {
     providerOpenAI: 'OpenAI / 中转站',
     providerSeedream: '字节 Seedream',
     providerDashScope: '阿里 DashScope (通义万相 / Qwen)',
+    providerAgnes: 'Agnes AI (Image 2.1 Flash)',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: '留空即可保留已配置的 Key',
     apiKeyHint: '安全保存为 {key}；页面不会读回明文。',
@@ -64,6 +68,7 @@ const DICT = {
     endpointHintOpenAI: '中转站请填其 OpenAI 兼容的 /v1 地址。',
     endpointHintSeedream: '火山方舟兼容的 /api/v3 地址。',
     endpointHintDashScope: '阿里云百炼 DashScope 官方接口地址。',
+    endpointHintAgnes: 'Agnes AI Hub 兼容的 /v1 地址。',
     model: '模型',
     saveToWorkspace: '保存到工作区',
     saveToWorkspaceHint: '每次生成后，把图片文件保存到当前会话工作区。',
@@ -94,6 +99,7 @@ const DICT = {
     providerOpenAI: 'OpenAI / Relay',
     providerSeedream: 'ByteDance Seedream',
     providerDashScope: 'Aliyun DashScope (Wanx / Qwen)',
+    providerAgnes: 'Agnes AI (Image 2.1 Flash)',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: 'Leave empty to keep configured key',
     apiKeyHint: 'Securely saved as {key}; never read back in plaintext.',
@@ -104,6 +110,7 @@ const DICT = {
     endpointHintOpenAI: 'OpenAI-compatible /v1 base URL for relays.',
     endpointHintSeedream: 'Volcengine Ark compatible /api/v3 base URL.',
     endpointHintDashScope: 'Official Aliyun DashScope endpoint.',
+    endpointHintAgnes: 'Agnes AI Hub compatible /v1 base URL.',
     model: 'Model',
     saveToWorkspace: 'Save to workspace',
     saveToWorkspaceHint: 'Write each generated image as a file into the session workspace.',
@@ -318,6 +325,7 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
     openai: t('providerOpenAI'),
     seedream: t('providerSeedream'),
     dashscope: t('providerDashScope'),
+    agnes: t('providerAgnes'),
   }
 
   useEffect(() => {
@@ -340,8 +348,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
     event.preventDefault(); setSaving(true); setMessage('')
     try {
       await props.scope.set('provider', provider)
-      await props.scope.set(provider === 'google' ? 'googleModel' : provider === 'openai' ? 'openaiModel' : provider === 'seedream' ? 'seedreamModel' : 'dashscopeModel', model)
-      await props.scope.set(provider === 'google' ? 'googleEndpoint' : provider === 'openai' ? 'openaiBaseURL' : provider === 'seedream' ? 'seedreamBaseURL' : 'dashscopeEndpoint', baseURL)
+      await props.scope.set(provider === 'google' ? 'googleModel' : provider === 'openai' ? 'openaiModel' : provider === 'seedream' ? 'seedreamModel' : provider === 'dashscope' ? 'dashscopeModel' : 'agnesModel', model)
+      await props.scope.set(provider === 'google' ? 'googleEndpoint' : provider === 'openai' ? 'openaiBaseURL' : provider === 'seedream' ? 'seedreamBaseURL' : provider === 'dashscope' ? 'dashscopeEndpoint' : 'agnesBaseURL', baseURL)
       await props.scope.set('saveToWorkspace', saveToWorkspace)
       await props.scope.set('workspaceFolder', workspaceFolder.trim())
       if (key.trim().length > 0) {
@@ -375,6 +383,7 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
               <option value="openai">{t('providerOpenAI')}</option>
               <option value="seedream">{t('providerSeedream')}</option>
               <option value="dashscope">{t('providerDashScope')}</option>
+              <option value="agnes">{t('providerAgnes')}</option>
             </select>
             <span className="dsh-ig-hint">{providerLabels[provider]}</span>
           </label>
@@ -389,7 +398,7 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
               <input className="dsh-ig-input" type="url" value={baseURL} onChange={event => { setBaseURL(event.target.value) }} required />
               <button type="button" className="dsh-ig-btn-reset" title={t('resetTitle')} onClick={() => { setBaseURL(DEFAULT_BASE_URLS[provider]) }}>{t('reset')}</button>
             </div>
-            <span className="dsh-ig-hint">{provider === 'google' ? t('endpointHintGoogle') : provider === 'openai' ? t('endpointHintOpenAI') : provider === 'seedream' ? t('endpointHintSeedream') : t('endpointHintDashScope')}</span>
+            <span className="dsh-ig-hint">{provider === 'google' ? t('endpointHintGoogle') : provider === 'openai' ? t('endpointHintOpenAI') : provider === 'seedream' ? t('endpointHintSeedream') : provider === 'dashscope' ? t('endpointHintDashScope') : t('endpointHintAgnes')}</span>
           </label>
           <label className="dsh-ig-field">
             <span className="dsh-ig-label">{t('model')}</span>
@@ -570,12 +579,12 @@ export function GeneratedImageCard(props: ImageCardProps) {
 }
 
 function modelOf(provider: Provider, value: ImageSettings | undefined): string {
-  const stored = provider === 'google' ? value?.googleModel : provider === 'openai' ? value?.openaiModel : provider === 'seedream' ? value?.seedreamModel : value?.dashscopeModel
+  const stored = provider === 'google' ? value?.googleModel : provider === 'openai' ? value?.openaiModel : provider === 'seedream' ? value?.seedreamModel : provider === 'dashscope' ? value?.dashscopeModel : value?.agnesModel
   return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_MODELS[provider]
 }
 
 function baseURLOf(provider: Provider, value: ImageSettings | undefined): string {
-  const stored = provider === 'google' ? value?.googleEndpoint : provider === 'openai' ? value?.openaiBaseURL : provider === 'seedream' ? value?.seedreamBaseURL : value?.dashscopeEndpoint
+  const stored = provider === 'google' ? value?.googleEndpoint : provider === 'openai' ? value?.openaiBaseURL : provider === 'seedream' ? value?.seedreamBaseURL : provider === 'dashscope' ? value?.dashscopeEndpoint : value?.agnesBaseURL
   return typeof stored === 'string' && stored.length > 0 ? stored : DEFAULT_BASE_URLS[provider]
 }
 

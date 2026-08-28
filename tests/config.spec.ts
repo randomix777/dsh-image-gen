@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   Config,
+  DEFAULT_AGNES_BASE_URL,
+  DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
@@ -20,6 +22,17 @@ describe('resolveProvider', () => {
   it('resolves editable OpenAI-compatible profiles independently', () => {
     expect(resolveProvider({ provider: 'openai' })).toEqual({ provider: 'openai', apiKeyEnv: 'OPENAI_API_KEY', baseURL: DEFAULT_OPENAI_BASE_URL, model: DEFAULT_OPENAI_MODEL, imageSize: '1024x1024', count: 1 })
     expect(resolveProvider({ provider: 'seedream' })).toEqual({ provider: 'seedream', apiKeyEnv: 'ARK_API_KEY', baseURL: DEFAULT_SEEDREAM_BASE_URL, model: DEFAULT_SEEDREAM_MODEL, imageSize: '2K', count: 1 })
+  })
+
+  it('resolves Agnes profile', () => {
+    expect(resolveProvider({ provider: 'agnes' })).toEqual({
+      provider: 'agnes',
+      apiKeyEnv: 'AGNES_API_KEY',
+      baseURL: DEFAULT_AGNES_BASE_URL,
+      model: DEFAULT_AGNES_MODEL,
+      imageSize: '1K',
+      count: 1,
+    })
   })
 
   it('resolves DashScope profile', () => {

@@ -2,6 +2,8 @@
 import z from '@deepseek-ai/schemastery'
 
 import {
+  DEFAULT_AGNES_BASE_URL,
+  DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
@@ -15,6 +17,8 @@ import {
 } from './shared.js'
 
 export {
+  DEFAULT_AGNES_BASE_URL,
+  DEFAULT_AGNES_MODEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GOOGLE_ENDPOINT,
@@ -38,6 +42,8 @@ export const OPENAI_API_KEY_ENV = 'OPENAI_API_KEY'
 export const SEEDREAM_API_KEY_ENV = 'ARK_API_KEY'
 /** DashScope credential reference. */
 export const DASHSCOPE_API_KEY_ENV = 'DASHSCOPE_API_KEY'
+/** Agnes AI credential reference. */
+export const AGNES_API_KEY_ENV = 'AGNES_API_KEY'
 
 /** Google tool-level controls. */
 export const ASPECT_RATIOS = ['1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'] as const
@@ -56,6 +62,8 @@ export interface Config {
   seedreamModel?: string
   dashscopeEndpoint?: string
   dashscopeModel?: string
+  agnesBaseURL?: string
+  agnesModel?: string
   /** Number of images to generate per call; defaults to 1. */
   count?: number
   /** Also write every generated image as a file under the session workspace. */
@@ -75,6 +83,8 @@ export const Config: z<Config> = z.object({
   seedreamModel: z.string().default(DEFAULT_SEEDREAM_MODEL),
   dashscopeEndpoint: z.string().default(DEFAULT_DASHSCOPE_ENDPOINT),
   dashscopeModel: z.string().default(DEFAULT_DASHSCOPE_MODEL),
+  agnesBaseURL: z.string().default(DEFAULT_AGNES_BASE_URL),
+  agnesModel: z.string().default(DEFAULT_AGNES_MODEL),
   count: z.number().min(1).max(16).default(1),
   saveToWorkspace: z.boolean().default(true),
   workspaceFolder: z.string().default(DEFAULT_WORKSPACE_FOLDER),
@@ -85,12 +95,14 @@ export function resolveProvider(config: Config):
   | { provider: 'google'; apiKeyEnv: string; model: string; endpoint: string; aspectRatio: AspectRatio; imageSize: ImageSize; count: number }
   | { provider: 'openai'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'seedream'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
-  | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string; count: number } {
+  | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string; count: number }
+  | { provider: 'agnes'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number } {
   const count = config.count ?? 1
   switch (config.provider ?? 'google') {
     case 'openai': return { provider: 'openai', apiKeyEnv: OPENAI_API_KEY_ENV, model: config.openaiModel ?? DEFAULT_OPENAI_MODEL, baseURL: config.openaiBaseURL ?? DEFAULT_OPENAI_BASE_URL, imageSize: '1024x1024', count }
     case 'seedream': return { provider: 'seedream', apiKeyEnv: SEEDREAM_API_KEY_ENV, model: config.seedreamModel ?? DEFAULT_SEEDREAM_MODEL, baseURL: config.seedreamBaseURL ?? DEFAULT_SEEDREAM_BASE_URL, imageSize: '2K', count }
     case 'dashscope': return { provider: 'dashscope', apiKeyEnv: DASHSCOPE_API_KEY_ENV, model: config.dashscopeModel ?? DEFAULT_DASHSCOPE_MODEL, endpoint: config.dashscopeEndpoint ?? DEFAULT_DASHSCOPE_ENDPOINT, imageSize: '1024*1024', count }
+    case 'agnes': return { provider: 'agnes', apiKeyEnv: AGNES_API_KEY_ENV, model: config.agnesModel ?? DEFAULT_AGNES_MODEL, baseURL: config.agnesBaseURL ?? DEFAULT_AGNES_BASE_URL, imageSize: '1K', count }
     case 'google': return { provider: 'google', apiKeyEnv: GOOGLE_API_KEY_ENV, model: config.googleModel ?? DEFAULT_GOOGLE_MODEL, endpoint: config.googleEndpoint ?? DEFAULT_GOOGLE_ENDPOINT, aspectRatio: '1:1', imageSize: '1K', count }
   }
 }
