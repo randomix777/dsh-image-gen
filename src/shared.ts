@@ -6,7 +6,7 @@ export const IMAGE_ROUTE = '/plugins/dsh-image-gen/image'
 export const IMAGE_GENERATION_NAMESPACE = 'image-generation'
 
 /** Supported providers. */
-export const IMAGE_PROVIDERS = ['google', 'openai', 'seedream', 'dashscope', 'comfyui', 'agnes', 'glm', 'stability'] as const
+export const IMAGE_PROVIDERS = ['google', 'openai', 'seedream', 'dashscope', 'comfyui', 'agnes', 'glm', 'stability', 'codex', 'grok'] as const
 export type ImageProvider = typeof IMAGE_PROVIDERS[number]
 
 /** Default endpoints and base URLs. */
@@ -21,6 +21,8 @@ export const MAX_COMFYUI_WORKFLOW_BYTES = 5 * 1024 * 1024
 export const DEFAULT_AGNES_BASE_URL = 'https://apihub.agnes-ai.com/v1'
 export const DEFAULT_GLM_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4'
 export const DEFAULT_STABILITY_BASE_URL = 'https://api.stability.ai'
+export const DEFAULT_CODEX_IMAGE_URL = 'https://chatgpt.com/backend-api/codex/images/generations'
+export const DEFAULT_GROK_IMAGE_URL = 'https://api.x.ai/v1/images/generations'
 
 /** Default model names. */
 export const DEFAULT_GOOGLE_MODEL = 'gemini-3.1-flash-image'
@@ -30,6 +32,8 @@ export const DEFAULT_DASHSCOPE_MODEL = 'qwen-image-3.0'
 export const DEFAULT_AGNES_MODEL = 'agnes-image-2.1-flash'
 export const DEFAULT_GLM_MODEL = 'glm-image'
 export const DEFAULT_STABILITY_MODEL = 'stable-diffusion-xl-1.0'
+export const DEFAULT_CODEX_MODEL = 'gpt-image-2'
+export const DEFAULT_GROK_MODEL = 'grok-imagine-image-2.0'
 
 export const DEFAULT_MODELS: Record<ImageProvider, string> = {
   google: DEFAULT_GOOGLE_MODEL,
@@ -40,6 +44,8 @@ export const DEFAULT_MODELS: Record<ImageProvider, string> = {
   agnes: DEFAULT_AGNES_MODEL,
   glm: DEFAULT_GLM_MODEL,
   stability: DEFAULT_STABILITY_MODEL,
+  codex: DEFAULT_CODEX_MODEL,
+  grok: DEFAULT_GROK_MODEL,
 }
 
 export const DEFAULT_BASE_URLS: Record<ImageProvider, string> = {
@@ -51,4 +57,6 @@ export const DEFAULT_BASE_URLS: Record<ImageProvider, string> = {
   agnes: DEFAULT_AGNES_BASE_URL,
   glm: DEFAULT_GLM_BASE_URL,
   stability: DEFAULT_STABILITY_BASE_URL,
+  codex: DEFAULT_CODEX_IMAGE_URL,
+  grok: DEFAULT_GROK_IMAGE_URL,
 }

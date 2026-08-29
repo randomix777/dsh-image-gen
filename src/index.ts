@@ -11,6 +11,8 @@ import { editDashScopeImage, generateDashScopeImage } from './dashscope.js'
 import { editAgnesImage, generateAgnesImage } from './agnes.js'
 import { editGoogleImage, generateGoogleImage } from './google.js'
 import { generateGlmImage } from './glm.js'
+import { generateCodexImage } from './codex.js'
+import { generateGrokImage } from './grok.js'
 import { IMAGE_ROUTE, imageAttachmentFromMeta, serveImage } from './image-route.js'
 import { editOpenAICompatibleImage, generateOpenAICompatibleImage } from './openai-compatible.js'
 import { resolveReferenceImages } from './reference-image.js'
@@ -68,6 +70,38 @@ export function apply(ctx: Context, config: Config = {}): void {
         })
         return saveGenerated(ctx, generated, active.provider, active.workflowName, 'API workflow', current(), exec)
       }
+      // Codex and Grok use separate credentials, not apiKeyEnv
+      if (active.provider === 'codex') {
+        const tokenCred = await ctx.credentials.resolve(credentialRef(active.accessTokenEnv))
+        const accountIdCred = await ctx.credentials.resolve(credentialRef(active.accountIdEnv))
+        if (!tokenCred?.value || !accountIdCred?.value) throw new Error('generate_image requires CODEX_ACCESS_TOKEN and CODEX_ACCOUNT_ID credentials for the Codex provider')
+        const count = typeof args.count === 'number' && args.count >= 1 ? args.count : active.count
+        if (count <= 1) {
+          const generated = await generateCodexImage({ accessToken: tokenCred.value, accountId: accountIdCred.value, prompt: args.prompt, size: args.size ?? active.size, quality: active.quality, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          return saveGenerated(ctx, generated, active.provider, active.model, `codex/${active.quality}`, current(), exec)
+        }
+        let last: GeneratedValue | undefined
+        for (let i = 0; i < count; i++) {
+          const cr = await generateCodexImage({ accessToken: tokenCred.value, accountId: accountIdCred.value, prompt: args.prompt, size: args.size ?? active.size, quality: active.quality, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          last = await saveGenerated(ctx, cr, active.provider, active.model, `codex/${active.quality}`, current(), exec)
+        }
+        return last!
+      }
+      if (active.provider === 'grok') {
+        const tokenCred = await ctx.credentials.resolve(credentialRef(active.accessTokenEnv))
+        if (!tokenCred?.value) throw new Error('generate_image requires GROK_ACCESS_TOKEN credential for the Grok provider')
+        const count = typeof args.count === 'number' && args.count >= 1 ? args.count : active.count
+        if (count <= 1) {
+          const generated = await generateGrokImage({ accessToken: tokenCred.value, prompt: args.prompt, size: args.size ?? active.size, quality: active.quality, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          return saveGenerated(ctx, generated, active.provider, active.model, `grok/${active.quality}`, current(), exec)
+        }
+        let last: GeneratedValue | undefined
+        for (let i = 0; i < count; i++) {
+          const gr = await generateGrokImage({ accessToken: tokenCred.value, prompt: args.prompt, size: args.size ?? active.size, quality: active.quality, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+          last = await saveGenerated(ctx, gr, active.provider, active.model, `grok/${active.quality}`, current(), exec)
+        }
+        return last!
+      }
       const credential = await ctx.credentials.resolve(credentialRef(active.apiKeyEnv))
       if (credential === undefined || credential.value.length === 0) throw new Error(`generate_image requires the ${active.apiKeyEnv} credential; configure it in Settings > Plugins > Image generation.`)
       const count = typeof args.count === 'number' && args.count >= 1 ? args.count : active.count
@@ -106,17 +140,20 @@ export function apply(ctx: Context, config: Config = {}): void {
       // Batch: generate multiple images, return the last one (all are saved)
       let last: GeneratedValue | undefined
       for (let i = 0; i < count; i++) {
-        const generated = active.provider === 'google'
-          ? await generateGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, aspectRatio: (args.aspect_ratio ?? active.aspectRatio) as AspectRatio, imageSize: (args.image_size ?? active.imageSize) as ImageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
-          : active.provider === 'dashscope'
-            ? await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
-            : active.provider === 'agnes'
-             ? await generateAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) })
-             : active.provider === 'glm'
-               ? await generateGlmImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-               : active.provider === 'stability'
-                 ? await generateStabilityImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal })
-                 : await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+        let generated: Awaited<ReturnType<typeof generateOpenAICompatibleImage>>
+        if (active.provider === 'google') {
+          generated = await generateGoogleImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, aspectRatio: (args.aspect_ratio ?? active.aspectRatio) as AspectRatio, imageSize: (args.image_size ?? active.imageSize) as ImageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+        } else if (active.provider === 'dashscope') {
+          generated = await generateDashScopeImage({ apiKey: credential.value, endpoint: active.endpoint, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+        } else if (active.provider === 'agnes') {
+          generated = await generateAgnesImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, ...(typeof args.aspect_ratio === 'string' ? { ratio: args.aspect_ratio } : {}) }) as Awaited<ReturnType<typeof generateOpenAICompatibleImage>>
+        } else if (active.provider === 'glm') {
+          generated = await generateGlmImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal }) as Awaited<ReturnType<typeof generateOpenAICompatibleImage>>
+        } else if (active.provider === 'stability') {
+          generated = await generateStabilityImage({ apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal }) as Awaited<ReturnType<typeof generateOpenAICompatibleImage>>
+        } else {
+          generated = await generateOpenAICompatibleImage({ provider: active.provider, apiKey: credential.value, baseURL: active.baseURL, model: active.model, prompt: args.prompt, size: args.size ?? active.imageSize, maxBytes: ctx.attachments.imageLimits.maxImageBytes, signal: exec.signal, count: 1 })
+        }
         const output = active.provider === 'google' ? `${args.aspect_ratio ?? active.aspectRatio}, ${args.image_size ?? active.imageSize}` : args.size ?? active.imageSize
         last = await saveGenerated(ctx, generated, active.provider, active.model, output, current(), exec)
       }
@@ -143,6 +180,9 @@ export function apply(ctx: Context, config: Config = {}): void {
       const active = resolveProvider(current())
       if (active.provider === 'comfyui') {
         throw new Error('edit_image is not yet supported by the ComfyUI provider; switch providers or use generate_image')
+      }
+      if (active.provider === 'codex' || active.provider === 'grok') {
+        throw new Error(`edit_image is not supported by the ${active.provider} provider; use generate_image instead`)
       }
       const credential = await ctx.credentials.resolve(credentialRef(active.apiKeyEnv))
       if (credential === undefined || credential.value.length === 0) throw new Error(`edit_image requires the ${active.apiKeyEnv} credential; configure it in Settings > Plugins > Image generation.`)

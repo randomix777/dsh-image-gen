@@ -67,6 +67,8 @@ const KEY_REF: Partial<Record<Provider, string>> = {
   agnes: 'AGNES_API_KEY',
   glm: 'ZHIPU_API_KEY',
   stability: 'STABILITY_API_KEY',
+  codex: 'CODEX_ACCESS_TOKEN',
+  grok: 'GROK_ACCESS_TOKEN',
 }
 
 const DICT = {
@@ -82,6 +84,8 @@ const DICT = {
     providerAgnes: 'Agnes AI (Image 2.1 Flash)',
     providerGlm: '智谱 GLM-Image',
     providerStability: 'Stability AI',
+    providerCodex: 'ChatGPT / Codex（订阅）',
+    providerGrok: 'X AI Grok（订阅）',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: '留空即可保留已配置的 Key',
     apiKeyHint: '安全保存为 {key}；页面不会读回明文。',
@@ -139,6 +143,8 @@ const DICT = {
     providerAgnes: 'Agnes AI (Image 2.1 Flash)',
     providerGlm: 'Zhipu GLM-Image',
     providerStability: 'Stability AI',
+    providerCodex: 'ChatGPT / Codex (Subscription)',
+    providerGrok: 'X AI Grok (Subscription)',
     apiKeyLabel: '{provider} API Key',
     apiKeyPlaceholder: 'Leave empty to keep configured key',
     apiKeyHint: 'Securely saved as {key}; never read back in plaintext.',
@@ -389,6 +395,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
     agnes: t('providerAgnes'),
     glm: t('providerGlm'),
     stability: t('providerStability'),
+    codex: t('providerCodex'),
+    grok: t('providerGrok'),
   }
 
   useEffect(() => {
@@ -495,6 +503,8 @@ export function ImageGenerationSettingsCard(props: SettingsCardProps) {
               <option value="agnes">{t('providerAgnes')}</option>
               <option value="glm">{t('providerGlm')}</option>
               <option value="stability">{t('providerStability')}</option>
+              <option value="codex">{t('providerCodex')}</option>
+              <option value="grok">{t('providerGrok')}</option>
             </select>
             <span className="dsh-ig-hint">{providerLabels[provider]}</span>
           </label>
