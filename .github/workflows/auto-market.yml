@@ -13,9 +13,10 @@ jobs:
   update-market:
     runs-on: ubuntu-latest
     steps:
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      - name: Checkout dsh-image-gen
+        uses: actions/checkout@v4
+        with:
+          path: dsh-image-gen
 
       - name: Checkout awesome-dsh-plugin fork
         uses: actions/checkout@v4
@@ -41,7 +42,7 @@ jobs:
           npm install 2>/dev/null
           node scripts/generate-readme.mjs 2>/dev/null || true
 
-      - name: Create PR
+      - name: Create PR to upstream
         run: |
           cd awesome-dsh-plugin
           git config user.email "actions@github.com"
