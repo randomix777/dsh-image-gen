@@ -3,6 +3,8 @@ import {
   Config,
   DEFAULT_AGNES_BASE_URL,
   DEFAULT_AGNES_MODEL,
+  DEFAULT_COMFYUI_BASE_URL,
+  DEFAULT_COMFYUI_TIMEOUT_MS,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GLM_BASE_URL,
@@ -70,6 +72,14 @@ describe('resolveProvider', () => {
       imageSize: '1024*1024',
       count: 1,
     })
+  })
+
+  it('resolves ComfyUI profile', () => {
+    const result = resolveProvider({ provider: 'comfyui' })
+    expect(result.provider).toBe('comfyui')
+    expect(result.baseURL).toBe(DEFAULT_COMFYUI_BASE_URL)
+    expect(result.timeoutMs).toBe(DEFAULT_COMFYUI_TIMEOUT_MS)
+    expect(result.count).toBe(1)
   })
 })
 

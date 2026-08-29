@@ -4,6 +4,9 @@ import z from '@deepseek-ai/schemastery'
 import {
   DEFAULT_AGNES_BASE_URL,
   DEFAULT_AGNES_MODEL,
+  DEFAULT_COMFYUI_BASE_URL,
+  DEFAULT_COMFYUI_TIMEOUT_MS,
+  DEFAULT_COMFYUI_WORKFLOW_LABEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GLM_BASE_URL,
@@ -23,6 +26,9 @@ import {
 export {
   DEFAULT_AGNES_BASE_URL,
   DEFAULT_AGNES_MODEL,
+  DEFAULT_COMFYUI_BASE_URL,
+  DEFAULT_COMFYUI_TIMEOUT_MS,
+  DEFAULT_COMFYUI_WORKFLOW_LABEL,
   DEFAULT_DASHSCOPE_ENDPOINT,
   DEFAULT_DASHSCOPE_MODEL,
   DEFAULT_GLM_BASE_URL,
@@ -50,6 +56,8 @@ export const OPENAI_API_KEY_ENV = 'OPENAI_API_KEY'
 export const SEEDREAM_API_KEY_ENV = 'ARK_API_KEY'
 /** DashScope credential reference. */
 export const DASHSCOPE_API_KEY_ENV = 'DASHSCOPE_API_KEY'
+/** ComfyUI local server credential reference. */
+export const COMFYUI_API_KEY_ENV = ''
 /** Agnes AI credential reference. */
 export const AGNES_API_KEY_ENV = 'AGNES_API_KEY'
 /** Zhipu AI (GLM) credential reference. */
@@ -74,6 +82,12 @@ export interface Config {
   seedreamModel?: string
   dashscopeEndpoint?: string
   dashscopeModel?: string
+  comfyuiBaseURL?: string
+  /** ComfyUI API-format workflow JSON imported through the Web settings page. */
+  comfyuiWorkflowJson?: string
+  /** Original imported file name, used as a human-readable result label. */
+  comfyuiWorkflowName?: string
+  comfyuiTimeoutMs?: number
   agnesBaseURL?: string
   agnesModel?: string
   glmBaseURL?: string
@@ -99,6 +113,10 @@ export const Config: z<Config> = z.object({
   seedreamModel: z.string().default(DEFAULT_SEEDREAM_MODEL),
   dashscopeEndpoint: z.string().default(DEFAULT_DASHSCOPE_ENDPOINT),
   dashscopeModel: z.string().default(DEFAULT_DASHSCOPE_MODEL),
+  comfyuiBaseURL: z.string().default(DEFAULT_COMFYUI_BASE_URL),
+  comfyuiWorkflowJson: z.string().default(''),
+  comfyuiWorkflowName: z.string().default(''),
+  comfyuiTimeoutMs: z.number().min(1_000).max(3_600_000).default(DEFAULT_COMFYUI_TIMEOUT_MS),
   agnesBaseURL: z.string().default(DEFAULT_AGNES_BASE_URL),
   agnesModel: z.string().default(DEFAULT_AGNES_MODEL),
   glmBaseURL: z.string().default(DEFAULT_GLM_BASE_URL),
@@ -116,6 +134,7 @@ export function resolveProvider(config: Config):
   | { provider: 'openai'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'seedream'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'dashscope'; apiKeyEnv: string; model: string; endpoint: string; imageSize: string; count: number }
+  | { provider: 'comfyui'; baseURL: string; workflowJson: string; workflowName: string; timeoutMs: number; count: number }
   | { provider: 'agnes'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'glm'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number }
   | { provider: 'stability'; apiKeyEnv: string; model: string; baseURL: string; imageSize: string; count: number } {
@@ -124,6 +143,14 @@ export function resolveProvider(config: Config):
     case 'openai': return { provider: 'openai', apiKeyEnv: OPENAI_API_KEY_ENV, model: config.openaiModel ?? DEFAULT_OPENAI_MODEL, baseURL: config.openaiBaseURL ?? DEFAULT_OPENAI_BASE_URL, imageSize: '1024x1024', count }
     case 'seedream': return { provider: 'seedream', apiKeyEnv: SEEDREAM_API_KEY_ENV, model: config.seedreamModel ?? DEFAULT_SEEDREAM_MODEL, baseURL: config.seedreamBaseURL ?? DEFAULT_SEEDREAM_BASE_URL, imageSize: '2K', count }
     case 'dashscope': return { provider: 'dashscope', apiKeyEnv: DASHSCOPE_API_KEY_ENV, model: config.dashscopeModel ?? DEFAULT_DASHSCOPE_MODEL, endpoint: config.dashscopeEndpoint ?? DEFAULT_DASHSCOPE_ENDPOINT, imageSize: '1024*1024', count }
+    case 'comfyui': return {
+      provider: 'comfyui',
+      baseURL: config.comfyuiBaseURL ?? DEFAULT_COMFYUI_BASE_URL,
+      workflowJson: config.comfyuiWorkflowJson ?? '',
+      workflowName: config.comfyuiWorkflowName?.trim() || DEFAULT_COMFYUI_WORKFLOW_LABEL,
+      timeoutMs: config.comfyuiTimeoutMs ?? DEFAULT_COMFYUI_TIMEOUT_MS,
+      count,
+    }
     case 'agnes': return { provider: 'agnes', apiKeyEnv: AGNES_API_KEY_ENV, model: config.agnesModel ?? DEFAULT_AGNES_MODEL, baseURL: config.agnesBaseURL ?? DEFAULT_AGNES_BASE_URL, imageSize: '1K', count }
     case 'glm': return { provider: 'glm', apiKeyEnv: GLM_API_KEY_ENV, model: config.glmModel ?? DEFAULT_GLM_MODEL, baseURL: config.glmBaseURL ?? DEFAULT_GLM_BASE_URL, imageSize: '1280x1280', count }
     case 'stability': return { provider: 'stability', apiKeyEnv: STABILITY_API_KEY_ENV, model: config.stabilityModel ?? DEFAULT_STABILITY_MODEL, baseURL: config.stabilityBaseURL ?? DEFAULT_STABILITY_BASE_URL, imageSize: '1024x1024', count }
