@@ -51,7 +51,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add .
           git commit -m "chore: update randomix777/dsh-image-gen entry" || echo "No changes"
-          git push origin "$BRANCH"
+          git push origin "$BRANCH" --force-with-lease 2>/dev/null || git push origin "$BRANCH"
           gh pr create \
             --repo awesome-dsh-plugin/awesome-dsh-plugin \
             --title "chore: update randomix777/dsh-image-gen" \
