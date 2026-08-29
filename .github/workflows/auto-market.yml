@@ -15,9 +15,7 @@ jobs:
     steps:
       - name: Get version
         id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Checkout awesome-dsh-plugin fork
         uses: actions/checkout@v4
@@ -28,8 +26,7 @@ jobs:
 
       - name: Update plugin entry
         run: |
-          cd awesome-dsh-plugin
-          cat > data/plugins/randomix777__dsh-image-gen.yml << EOF
+          cat > awesome-dsh-plugin/data/plugins/randomix777__dsh-image-gen.yml << 'EOF'
           url: https://github.com/randomix777/dsh-image-gen
           name: randomix777/dsh-image-gen
           category: workflow
