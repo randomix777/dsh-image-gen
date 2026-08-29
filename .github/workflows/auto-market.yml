@@ -1,0 +1,64 @@
+name: Auto DSH Plugin Market Update
+
+on:
+  push:
+    branches:
+      - 'optimize-generation'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-market:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Checkout awesome-dsh-plugin fork
+        uses: actions/checkout@v4
+        with:
+          repository: randomix777/awesome-dsh-plugin
+          token: ${{ secrets.GH_PAT }}
+          path: awesome-dsh-plugin
+
+      - name: Update plugin entry
+        run: |
+          cd awesome-dsh-plugin
+          cat > data/plugins/randomix777__dsh-image-gen.yml << EOF
+          url: https://github.com/randomix777/dsh-image-gen
+          name: randomix777/dsh-image-gen
+          category: workflow
+          description:
+            en: 'Optimized fork of dsh-image-gen with batch generation (count), gallery pagination, lazy loading, fetch retry/timeout, and 7 providers: Gemini/OpenAI/Seedream/DashScope/Agnes/GLM-Image/Stability AI.'
+            zh: 'dsh-image-gen 优化版：支持批量生图（count 参数）、画廊分页懒加载、请求超时/重试，兼容 7 个提供商：Gemini/OpenAI/Seedream/通义万相/Agnes/智谱 GLM/Stability AI。'
+          EOF
+
+      - name: Regenerate READMEs
+        run: |
+          cd awesome-dsh-plugin
+          npm install 2>/dev/null
+          node scripts/generate-readme.mjs 2>/dev/null || true
+
+      - name: Create PR
+        run: |
+          cd awesome-dsh-plugin
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          BRANCH="update-dsh-image-gen"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: update randomix777/dsh-image-gen entry" || echo "No changes"
+          git push origin "$BRANCH"
+          gh pr create \
+            --repo awesome-dsh-plugin/awesome-dsh-plugin \
+            --title "chore: update randomix777/dsh-image-gen" \
+            --body "Auto-update plugin entry." \
+            --head "randomix777:${BRANCH}" \
+            --base main
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
